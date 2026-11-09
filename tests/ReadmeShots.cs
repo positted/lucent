@@ -56,7 +56,25 @@ class ReadmeShots
   }
   Console.WriteLine("  "+Path.GetFileName(path)+"  "+area.Width+"x"+area.Height);
  }
- static async Task Run(string coversFolder,string output)
+ // The window drawn straight from its own visuals, over black: nothing else on the screen can get into the picture (a window in front of it, or the desktop).
+ static void Shot(Window window,string path)
+ {
+  if(Environment.GetEnvironmentVariable("LUCENT_CAPTURE")=="screen"){Save(RectOf(window),path,8);return;}
+  int w=(int)Math.Round(window.ActualWidth*scale),h=(int)Math.Round(window.ActualHeight*scale);
+  var shown=new System.Windows.Media.Imaging.RenderTargetBitmap(w,h,96*scale,96*scale,System.Windows.Media.PixelFormats.Pbgra32);
+  shown.Render(window);
+  var visual=new System.Windows.Media.DrawingVisual();
+  using(var context=visual.RenderOpen())
+  {
+   context.DrawRectangle(System.Windows.Media.Brushes.Black,null,new System.Windows.Rect(0,0,w/scale,h/scale));
+   context.DrawImage(shown,new System.Windows.Rect(0,0,w/scale,h/scale));
+  }
+  var final=new System.Windows.Media.Imaging.RenderTargetBitmap(w,h,96*scale,96*scale,System.Windows.Media.PixelFormats.Pbgra32);
+  final.Render(visual);
+  var encoder=new System.Windows.Media.Imaging.PngBitmapEncoder();encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(final));
+  using(var stream=File.Create(path))encoder.Save(stream);
+  Console.WriteLine("  "+Path.GetFileName(path)+"  "+w+"x"+h);
+ } static async Task Run(string coversFolder,string output)
  {
   Directory.CreateDirectory(output);
   StateStore.Folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"test-data","readme-shots-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(StateStore.Folder);
@@ -96,7 +114,7 @@ class ReadmeShots
   {
    play(file);await Task.Delay(2600);
    var name=Path.GetFileNameWithoutExtension(file).Split(new[]{"__"},StringSplitOptions.None)[0].Replace(' ','-').ToLowerInvariant();
-   Save(RectOf(shell),Path.Combine(output,"home-"+name+".png"),8);
+   Shot(shell,Path.Combine(output,"home-"+name+".png"));
   }
   // The other pages, with the first cover.
   play(covers[0]);await Task.Delay(1800);
@@ -106,13 +124,13 @@ class ReadmeShots
   {
    if(!pages.Contains(page))continue;
    Call(shell,"ShowPage",page);await Task.Delay(1400);
-   Save(RectOf(shell),Path.Combine(output,"page-"+page.ToLowerInvariant()+".png"),8);
+   Shot(shell,Path.Combine(output,"page-"+page.ToLowerInvariant()+".png"));
   }
   Call(shell,"ShowPage","Home");await Task.Delay(900);
   // The big player.
   play(covers[Math.Min(1,covers.Count-1)]);await Task.Delay(1200);
   Call(shell,"SetBigPlayerOpen",true);await Task.Delay(3200);
-  Save(RectOf(shell),Path.Combine(output,"big-player.png"),8);
+  Shot(shell,Path.Combine(output,"big-player.png"));
   // The same player with lyrics: made-up demo lines in the lyrics cache (nothing is looked up online, and no real song's words are shown).
   var lyricsCache=(IDictionary)typeof(LyricsService).GetField("cache",BindingFlags.Static|BindingFlags.NonPublic).GetValue(null);
   var demoLines=new[]{"This is where the words of the song would be","Each line lights up as it is sung","The one that is playing stays bright","The others wait softly behind it","Scroll with the wheel or click a line to jump there","The player takes its colors from the cover","And the lyrics glide to keep up","Line by line, in time with the music","Nothing here is a real song","These are just lines to show how it looks","Open the lyrics with the speech bubble","Close them and the player is just the cover again"};
@@ -124,14 +142,14 @@ class ReadmeShots
   // (A test-mode window does not look songs up, so the demo lines are put in the lyrics view directly.)
   bigView.Lyrics.SetLyrics((LyricsResult)lyricsCache[(loadedBig.Item1.Artist+"|"+loadedBig.Item1.Title).ToLowerInvariant()]);bigView.Lyrics.Update(74);
   await Task.Delay(2200);
-  Save(RectOf(shell),Path.Combine(output,"big-player-lyrics.png"),8);
+  Shot(shell,Path.Combine(output,"big-player-lyrics.png"));
   Call(bigView,"ToggleLyrics");await Task.Delay(500);
   Call(shell,"SetBigPlayerOpen",false);await Task.Delay(900);
   // Game profiles, scrolled to the games (the pictures of the games found on this PC).
   Call(shell,"ShowPage","Profiles");await Task.Delay(1500);
   Shell.ShowGameIcons=true;var found=GameLibrary.Scan();shell.SetLibrary(found);Console.WriteLine("games found: "+found.Count+" ("+string.Join(", ",found.Take(12).Select(g=>g.Name))+")");await Task.Delay(2500);
   var scroll=(System.Windows.Controls.ScrollViewer)F(shell,"contentScroll").GetValue(shell);scroll.ScrollToVerticalOffset(520);await Task.Delay(900);
-  Save(RectOf(shell),Path.Combine(output,"game-profiles-games.png"),8);
+  Shot(shell,Path.Combine(output,"game-profiles-games.png"));
   if(Environment.GetCommandLineArgs().Contains("band"))
   {
    // The strip of the window around the player bar over a page with text just above it: is anything blurred above the bar?

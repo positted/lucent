@@ -4,19 +4,19 @@
 
 <br>
 
-**A small Windows app I made for the things I kept fiddling with: my display, my games and my music.**
-**Its colors come from the album that is playing.**
+### *Lucent. The Windows app that makes your setup feel like yours.*
+
+A small app I made for the things I kept fiddling with: my display, my games and my music.
+Its colors come from the album that is playing.
 
 <b>Download coming soon</b> &nbsp;·&nbsp; Windows 10 / 11 &nbsp;·&nbsp; installs for your user, no admin prompt
 
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4) ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![Price: free](https://img.shields.io/badge/price-free-brightgreen) [![Stars](https://img.shields.io/github/stars/positted/lucent?style=flat)](https://github.com/positted/lucent/stargazers)
 
-[![Join our community](https://img.shields.io/badge/Join%20our%20community!-Discord-5865F2?logo=discord&logoColor=white)](https://github.com/positted/lucent/discussions) &nbsp; [![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-support%20Lucent-ff5e5b?logo=ko-fi&logoColor=white)](https://ko-fi.com/lucent_)
+<a href="https://github.com/positted/lucent/discussions"><img src="docs/images/discord-banner.svg" alt="Come say hello! Join our community on Discord" width="330"></a> &nbsp; <a href="https://ko-fi.com/lucent_"><img src="docs/images/kofi-banner.svg" alt="Buy me a coffee. Support Lucent on Ko-fi" width="270"></a>
 
-<!-- Discord server not made yet: the community badge points to GitHub Discussions for now. Swap the link for the invite later. -->
-<!-- Social preview: upload docs/images/social-preview.png in Settings > Social preview. -->
+<!-- Discord server not made yet: the community banner points to GitHub Discussions for now. Swap the link for the invite later. -->
 <!-- TODO GIFs (need a live recording): docs/images/mini-player-close.gif, docs/images/dark-boost-scroll.gif -->
-
 </div>
 
 <br>
@@ -35,7 +35,7 @@ I write and test it myself on my own PC, so if something looks off or breaks on 
 |---|---|
 | **Resolution and refresh rate** | Switch with a click or a shortcut, keep two sizes as a quick-switch pair, add custom resolutions. Your refresh rate and color depth stay the same, and nothing is applied when Lucent starts. |
 | **Color** | Vibrance, a red filter and screen dimming for each display, quick looks (Vivid, Warm evening, Night, Reading), color-blindness modes with a strength slider and eye-break reminders. |
-| **Game profiles** | A saved look for each game. While the game runs Lucent uses its look, then goes back to your desktop look. |
+| **Profiles** | Save your colors, Dark Boost, zoom, Color pop and sound radar as a profile, and use it any time. Tie one to a game and it switches on while that game runs, then goes back to your desktop look. |
 | **Crosshair** | Build your own, save it, share it with a short code. |
 | **Zoom and visual tools** | Zoom with the mouse wheel, Smart shadows, Dark Boost (hold its key and scroll to change the strength), Color pop and a sound radar. |
 | **Game Boost** | See what is using memory and close only what you pick. Games, anti-cheat, Windows and security parts are never touched. |
@@ -44,41 +44,36 @@ I write and test it myself on my own PC, so if something looks off or breaks on 
 
 ## Colors that follow the music
 
-The window, the cards and the moving colors behind them are made from the cover that is playing. A blue cover gives a blue app, a red one a red app. A cover with a small patch of another color (a face on a blue sky) still gives its main color.
+Put a song on and Lucent changes with it. Every album cover gives the window its own mood: cool blue, warm red, dusty gold. Lucent looks at the whole cover and goes with the color there is the most of, so one small patch of another color will not take over.
 
 <p align="center">
 <img src="docs/images/colors-follow-music.gif" alt="The app's colors changing from one album cover to the next" width="640">
 </p>
 
-<p align="center">
-<img src="docs/images/home-red.png" alt="Home with a red album cover" width="440">
-<img src="docs/images/home-colorful.png" alt="Home with a colorful album cover" width="440">
-</p>
+<table>
+<tr>
+<td align="center"><img src="docs/images/home.png" alt="A blue album cover gives a blue app" width="285"><br><sub>A blue cover</sub></td>
+<td align="center"><img src="docs/images/home-red.png" alt="A red album cover gives a red app" width="285"><br><sub>A red cover</sub></td>
+<td align="center"><img src="docs/images/home-warm.png" alt="A gold album cover gives a warm app" width="285"><br><sub>A gold cover</sub></td>
+</tr>
+</table>
 
-## The player
+## Take a look
 
-<p align="center">
-<img src="docs/images/big-player.png" alt="The big player" width="440">
-<img src="docs/images/big-player-lyrics.png" alt="The big player with lyrics" width="440">
-</p>
+<table>
+<tr>
+<td align="center"><img src="docs/images/big-player.png" alt="The big player" width="285"><br><sub>The big player</sub></td>
+<td align="center"><img src="docs/images/big-player-lyrics.png" alt="The big player with lyrics" width="285"><br><sub>Lyrics in time with the song</sub></td>
+<td align="center"><img src="docs/images/games.png" alt="Your games, found from your launchers" width="285"><br><sub>Your games, found for you</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/images/resolution.png" alt="Resolution and refresh rate" width="285"><br><sub>Display</sub></td>
+<td align="center"><img src="docs/images/color.png" alt="Color" width="285"><br><sub>Color</sub></td>
+<td align="center"><img src="docs/images/crosshair.png" alt="Crosshair" width="285"><br><sub>Crosshair</sub></td>
+</tr>
+</table>
 
-Lyrics show line by line in time with the song. (The lines in this picture are made up for the picture.)
-
-## Your games
-
-<p align="center">
-<img src="docs/images/games.png" alt="Games found on the PC, in Game profiles" width="760">
-</p>
-
-## More
-
-<p align="center">
-<img src="docs/images/resolution.png" alt="Resolution" width="440">
-<img src="docs/images/color.png" alt="Color" width="440">
-<img src="docs/images/crosshair.png" alt="Crosshair" width="440">
-<img src="docs/images/home-warm.png" alt="Home with a warm album cover" width="440">
-</p>
-
+<sub>The lyrics in that picture are made up for the picture.</sub>
 ## Install
 
 The first download is coming soon. Star or watch this repository to hear when it is out.
