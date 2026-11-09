@@ -29,6 +29,21 @@ namespace Lucent
         bool boostWorking;
         // Checks survive searching, filtering and excluding, but a new scan starts clean.
         readonly HashSet<string> boostSelected=new HashSet<string>();
+        int scanMark;
+        // Black like the text on the button.
+        static void Ink(DependencyObject element,Brush brush)
+        {
+            var shape=element as System.Windows.Shapes.Shape;
+            if(shape!=null){if(shape.Fill!=null)shape.Fill=brush;if(shape.Stroke!=null)shape.Stroke=brush;}
+            foreach(object child in LogicalTreeHelper.GetChildren(element)){var next=child as DependencyObject;if(next!=null)Ink(next,brush);}
+        }
+        void SetScanText(string text)
+        {
+            var icon=Design.Icon("Search",16);Ink(icon,Brushes.Black);icon.Margin=new Thickness(0,0,9,0);icon.VerticalAlignment=VerticalAlignment.Center;
+            var row=new StackPanel {Orientation=Orientation.Horizontal};
+            row.Children.Add(icon);row.Children.Add(new TextBlock {Text=text,FontSize=14,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});
+            boostScanButton.Content=row;
+        }
         FrameworkElement BuildBoostWorkspace()
         {
             var page=Page(TabTitle("Game Boost"),"Your memory and background apps. Review what to close, and keep what matters.");
@@ -36,15 +51,20 @@ namespace Lucent
             var card=Section("Background apps","Heaviest first. Click apps to select them, then close them. Games, Vanguard, Windows, security and driver components stay protected.");
             page.Children.Add(card);
             var tools=new DockPanel {Margin=new Thickness(0,5,0,12)};
-            boostScanButton=Action("Scan apps",async()=>await ScanWorkspace());
-            DockPanel.SetDock(boostScanButton,Dock.Right);
+            // The scan button is on the left of the search box and looks like a search: the primary button style, a magnifier and the word.
+            boostScanButton=Action("",async()=>await ScanWorkspace());
+            boostScanButton.Style=(Style)Resources["PrimaryAction"];
+            boostScanButton.Padding=new Thickness(16,0,18,0);boostScanButton.MinHeight=0;boostScanButton.Height=34;boostScanButton.Margin=new Thickness(0,4,10,4);
+            System.Windows.Automation.AutomationProperties.SetName(boostScanButton,"Scan apps");
+            SetScanText("Scan");
+            DockPanel.SetDock(boostScanButton,Dock.Left);
             tools.Children.Add(boostScanButton);
-            boostSearch=new TextBox {MinHeight=36,VerticalContentAlignment=VerticalAlignment.Center,Margin=new Thickness(0,4,12,4),ToolTip="Search by app, executable, publisher or service"};
+            boostSearch=new TextBox {Height=34,MinHeight=0,FontFamily=Design.Font,FontSize=13,Padding=new Thickness(14,8,12,8),VerticalContentAlignment=VerticalAlignment.Center,Margin=new Thickness(0,4,0,4),ToolTip="Search by app, executable, publisher or service"};
             System.Windows.Automation.AutomationProperties.SetName(boostSearch,"Search detected apps");
             boostSearch.TextChanged+=(s,e)=>RenderBoostRows();
             var searchArea=new Grid();
             searchArea.Children.Add(boostSearch);
-            var hint=new TextBlock {Text="Search apps and processes…",Foreground=Muted,FontSize=12,Margin=new Thickness(12,14,0,0),IsHitTestVisible=false};
+            var hint=new TextBlock {Text="Search apps and processes…",Foreground=Muted,FontSize=13,Margin=new Thickness(16,0,0,0),VerticalAlignment=VerticalAlignment.Center,IsHitTestVisible=false};
             searchArea.Children.Add(hint);
             boostSearch.TextChanged+=(s,e)=>hint.Visibility=string.IsNullOrWhiteSpace(boostSearch.Text)?Visibility.Visible:Visibility.Collapsed;
             tools.Children.Add(searchArea);
@@ -52,7 +72,7 @@ namespace Lucent
             var bar=new DockPanel {Margin=new Thickness(0,0,0,10)};
             var picks=new WrapPanel();
             DockPanel.SetDock(picks,Dock.Right);
-            foreach(string name in new[]{"Heaviest "+HeaviestCount,"Select all","Clear"})
+            foreach(string name in new[]{"Heaviest "+HeaviestCount,"Select all"})
             {
                 string pick=name;
                 var button=Action(name,()=>PickBoostApps(pick));
@@ -123,7 +143,7 @@ namespace Lucent
             boostScanButton.IsEnabled=false;
             boostCloseButton.IsEnabled=false;
             boostRestoreButton.IsEnabled=false;
-            boostScanButton.Content="Scanning…";
+            SetScanText("Scanning…");
             try
             {
                 var result=await Task.Run(()=>boost.DetectCandidates());if(closing)return;
@@ -131,7 +151,10 @@ namespace Lucent
                 boostSummary.Text=boostResults.Count(x=>!x.IsProtected)+" app groups · "+boostResults.Count(x=>x.IsProtected)+" protected groups · sampled CPU + physical RAM";
             }
             catch(Exception error){boostSummary.Text="Scan could not finish: "+error.Message;}
-            finally{scanning=false;boostScanButton.IsEnabled=true;boostScanButton.Content="Scan again";UpdateBoostSelection();}
+            finally{scanning=false;boostScanButton.IsEnabled=true;SetScanText("Scanned");
+                // "Scanned" stays five seconds, then the button is ready to scan again.
+                int shown=++scanMark;
+                Task.Delay(5000).ContinueWith(_=>Dispatcher.BeginInvoke(new Action(()=>{if(shown==scanMark&&!scanning&&!closing)SetScanText("Scan");})));UpdateBoostSelection();}
         }
         static string BoostMemory(long bytes)
         {

@@ -1,8 +1,8 @@
 [assembly:System.Reflection.AssemblyTitle("Lucent")]
 [assembly:System.Reflection.AssemblyProduct("Lucent")]
-[assembly:System.Reflection.AssemblyVersion("1.1126.80.0")]
-// Shown to people instead of the number while a build is not a public release.
-[assembly:System.Reflection.AssemblyInformationalVersion("1.1126.80-snapshot")]
+[assembly:System.Reflection.AssemblyVersion("1.1126.85.0")]
+// Shown to people: the release name and the build number (1.MMYY.build). Snapshots are told apart by the name of their folder, not by a suffix here.
+[assembly:System.Reflection.AssemblyInformationalVersion("1.1126.85")]
 [assembly:System.Runtime.CompilerServices.InternalsVisibleTo("lucent.tests")]
 
 

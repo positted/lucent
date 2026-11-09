@@ -6,6 +6,8 @@
 
 ### *Lucent. The Windows app that makes your setup feel like yours.*
 
+**Up to 300% vibrance.** Push your screen far past what Windows lets you, then let your music color the rest of the app.
+
 A small app I made for the things I kept fiddling with: my display, my games and my music.
 Its colors come from the album that is playing.
 
@@ -34,7 +36,7 @@ I write and test it myself on my own PC, so if something looks off or breaks on 
 | | |
 |---|---|
 | **Resolution and refresh rate** | Switch with a click or a shortcut, keep two sizes as a quick-switch pair, add custom resolutions. Your refresh rate and color depth stay the same, and nothing is applied when Lucent starts. |
-| **Color** | Vibrance, a red filter and screen dimming for each display, quick looks (Vivid, Warm evening, Night, Reading), color-blindness modes with a strength slider and eye-break reminders. |
+| **Color** | **Vibrance up to 300%** (the slider glows hotter the higher you push it), a red filter and screen dimming for each display, quick looks (Vivid, Warm evening, Night, Reading), and color-blindness modes with a strength slider. |
 | **Profiles** | Save your colors, Dark Boost, zoom, Color pop and sound radar as a profile, and use it any time. Tie one to a game and it switches on while that game runs, then goes back to your desktop look. |
 | **Crosshair** | Build your own, save it, share it with a short code. |
 | **Zoom and visual tools** | Zoom with the mouse wheel, Smart shadows, Dark Boost (hold its key and scroll to change the strength), Color pop and a sound radar. |

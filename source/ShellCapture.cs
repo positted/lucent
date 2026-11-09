@@ -13,14 +13,6 @@ namespace Lucent
         {
             if(!TestMode||effects!=null||gpuZoom!=null||crosshair!=null)throw new Exception("Live features enabled by UI capture.");
             Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"previews"));
-            // The eye-break reminder as it appears in the window (Windows also shows the same words from the tray icon).
-            ShowPage("Video");SettlePage();
-            preferences.BreakReminders=true;
-            typeof(Shell).GetField("breakElapsed",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(this,preferences.BreakMinutes-1);
-            BreakTick();
-            await Task.Delay(500);UpdateLayout();
-            CaptureFrame("Eye-break-reminder");
-            preferences.BreakReminders=false;HideStatus();
             // Fixture numbers, so the rings of Home can be looked at.
             ShowSystemStats(new SystemSnapshot{Cpu=37,CpuTemp=-1,RamUsedGb=14.2,RamTotalGb=31.9,Gpu=64,GpuTemp=71,VramUsedGb=6.1,VramTotalGb=12,GpuName="Fixture"});
             await Task.Delay(800);

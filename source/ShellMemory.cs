@@ -69,6 +69,7 @@ namespace Lucent
             clean.Click+=async(sender,args)=>
             {
                 if(TestMode||cleaningMemory)return;
+                cleanedMark++;
                 var stopSweeping=ShowMemoryCleanup(clean);
                 try
                 {
@@ -99,17 +100,36 @@ namespace Lucent
                 finally
                 {
                     stopSweeping();memoryMeter.BeginAnimation(OpacityProperty,null);
-                    cleaningMemory=false;clean.Content="Clean again";clean.IsHitTestVisible=true;
+                    cleaningMemory=false;clean.Content=CleanedContent();clean.IsEnabled=true;
+                    // "Cleaned" stays for five seconds, then the button is ready to clean again.
+                    int shown=++cleanedMark;
+                    Task.Delay(5000).ContinueWith(_=>Dispatcher.BeginInvoke(new Action(()=>{if(shown==cleanedMark&&!cleaningMemory&&!closing)clean.Content="Clean RAM";})));
                 }
             };
             // A fixed size, so swapping the label for the broom cannot resize the button.
-            clean.Width=132;clean.Height=38;clean.MinHeight=0;clean.Padding=new Thickness(0);clean.HorizontalContentAlignment=HorizontalAlignment.Center;clean.Margin=new Thickness(18,0,0,0);
+            clean.MinWidth=150;clean.Height=46;clean.FontSize=15;clean.MinHeight=0;clean.Padding=new Thickness(20,0,22,0);clean.HorizontalContentAlignment=HorizontalAlignment.Center;clean.Margin=new Thickness(18,0,0,0);
             clean.VerticalAlignment=VerticalAlignment.Center;DockPanel.SetDock(clean,Dock.Right);
             readingRow.Children.Add(clean);readingRow.Children.Add(memoryUsed);
             memoryResult.Visibility=memoryDetail.Visibility=Visibility.Collapsed;
             card.Children.Add(memoryResult);
             card.Children.Add(memoryDetail);
             return card;
+        }
+        int cleanedMark;
+        // "Cleaned RAM" with a green check in front of it.
+        static FrameworkElement CleanedContent()
+        {
+            var row=new StackPanel {Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};
+            row.Children.Add(GreenCheck(16,new Thickness(0,0,8,0)));
+            row.Children.Add(new TextBlock {Text="Cleaned RAM",FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});
+            return row;
+        }
+        // A check mark drawn as a shape, so it is exactly centered whatever the font does.
+        internal static FrameworkElement GreenCheck(double size,Thickness margin)
+        {
+            var mark=new System.Windows.Shapes.Path {Data=Geometry.Parse("M3,10.5 L8,15.5 L17,5"),Stroke=new SolidColorBrush(Color.FromRgb(36,170,92)),StrokeThickness=3,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round,StrokeLineJoin=PenLineJoin.Round};
+            var canvas=new Canvas {Width=20,Height=20};canvas.Children.Add(mark);
+            return new Viewbox {Width=size,Height=size,Margin=margin,VerticalAlignment=VerticalAlignment.Center,Child=canvas};
         }
         static string FormatRam(ulong bytes){return(bytes/1073741824d).ToString("0.00")+" GB";}
         void RefreshMemoryDashboard()
@@ -122,10 +142,9 @@ namespace Lucent
         // since a repeating one would otherwise keep the window redrawing after it is gone.
         Action ShowMemoryCleanup(Button clean)
         {
-            cleaningMemory=true;clean.IsHitTestVisible=false;
+            cleaningMemory=true;clean.IsEnabled=false;
             Action stopBroom;
             var busy=new StackPanel {Orientation=Orientation.Horizontal};
-            busy.Children.Add(new TextBlock {Text="Cleaning",FontSize=14,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});
             busy.Children.Add(SweepingBroom(out stopBroom));
             clean.Content=busy;
             memoryResult.Visibility=memoryDetail.Visibility=Visibility.Visible;
@@ -137,10 +156,11 @@ namespace Lucent
         // A broom swinging from the top of its handle, kicking up puffs of dust ahead of it.
         static FrameworkElement SweepingBroom(out Action stop)
         {
-            const double PivotX=19,PivotY=1;
-            var scene=new Canvas {Width=24,Height=20,Margin=new Thickness(6,0,0,0),VerticalAlignment=VerticalAlignment.Center,LayoutTransform=new ScaleTransform(.9,.9)};
+            const double PivotX=19,PivotY=1;   // the pivot is in the broom's own canvas
+            // The canvas is larger than the broom and the broom sits inside it, so the swing and the dust are never cut off at the edge.
+            var scene=new Canvas {Width=34,Height=34,Margin=new Thickness(0),VerticalAlignment=VerticalAlignment.Center,ClipToBounds=false,LayoutTransform=new ScaleTransform(1.2,1.2)};
             var swing=new RotateTransform(0,PivotX,PivotY);
-            var broom=new Canvas {Width=28,Height=22,RenderTransform=swing};
+            var broom=new Canvas {Width=28,Height=22,RenderTransform=swing};Canvas.SetLeft(broom,3);Canvas.SetTop(broom,5);
             broom.Children.Add(new System.Windows.Shapes.Path {Data=Geometry.Parse("M19,1 L12,11"),Stroke=Brushes.Black,StrokeThickness=2.2,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round});
             broom.Children.Add(new System.Windows.Shapes.Path {Data=Geometry.Parse("M9,9.5 L15.5,13.5 L12.5,21 Q7,20.5 3.5,17.5 Z"),Fill=Brushes.Black,Stroke=Brushes.Black,StrokeThickness=1,StrokeLineJoin=PenLineJoin.Round});
             broom.Children.Add(new System.Windows.Shapes.Path {Data=Geometry.Parse("M8.6,13.5 L6.4,17.5 M11.6,14.8 L9.8,19"),Stroke=Brushes.White,StrokeThickness=1,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round});
@@ -151,7 +171,7 @@ namespace Lucent
             {
                 var drift=new TranslateTransform();
                 var puff=new System.Windows.Shapes.Ellipse {Width=3,Height=3,Fill=Brushes.Black,Opacity=0,RenderTransform=drift};
-                Canvas.SetLeft(puff,4+i*2.5);Canvas.SetTop(puff,18-i);
+                Canvas.SetLeft(puff,7+i*2.5);Canvas.SetTop(puff,25-i);
                 scene.Children.Add(puff);puffs.Add(puff);drifts.Add(drift);
                 var begin=TimeSpan.FromMilliseconds(i*250);
                 var fade=new DoubleAnimationUsingKeyFrames {BeginTime=begin,RepeatBehavior=RepeatBehavior.Forever,Duration=TimeSpan.FromMilliseconds(760)};

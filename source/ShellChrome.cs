@@ -88,7 +88,7 @@ namespace Lucent
             var logo=new Border {Width=34,Height=28,Margin=new Thickness(2,0,4,0),Background=Brushes.Transparent,Cursor=Cursors.Hand,Child=Art.Logo(22),ToolTip="Lucent"};
             logo.MouseLeftButtonUp+=(s,e)=>ShowPage("Home");
             items.Children.Add(logo);
-            foreach(string name in new[]{"Home","Video","Resolution","Profiles","Crosshair","Game Boost","Visual tools"})items.Children.Add(ModernNavButton(name));
+            foreach(string name in new[]{"Home","Video","Resolution","Crosshair","Profiles","Visual tools","Game Boost"})items.Children.Add(ModernNavButton(name));
             items.Children.Add(new Border {Width=1,Height=16,Background=new SolidColorBrush(Color.FromArgb(60,255,255,255)),Margin=new Thickness(5,0,5,0),IsHitTestVisible=false});
             settingsRailButton=ModernNavButton("Settings");
             items.Children.Add(settingsRailButton);

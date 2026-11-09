@@ -73,7 +73,8 @@ namespace Lucent
             seek.Commit=async fraction=>{shownElapsed=-1;await Core.Seek(fraction*Core.progressLength);};
 
             var layout=new Grid {Margin=new Thickness(14,0,0,0)};
-            layout.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(250)});
+            // The two columns on the right take SideRoom+VolumeRoom, and the layout starts 14 px in. A left column of exactly that much less 14 puts the middle column (the transport and the seek line) on the true middle of the bar. It used to be 250, which put the play button about 57 px left of center.
+            layout.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(VolumeRoom+SideRoom-14)});
             layout.ColumnDefinitions.Add(new ColumnDefinition());
             layout.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(VolumeRoom)});
             layout.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(SideRoom)});

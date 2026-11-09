@@ -416,8 +416,13 @@ namespace Lucent
             for(int i=0;i<screens.Length;i++)
             {
                 var screen=screens[i];string device=screen.DeviceName;
-                var chip=Action("Display "+(i+1)+(screen.Primary?" (main)":"")+"  \u00B7  "+screen.Bounds.Width+" \u00D7 "+screen.Bounds.Height,()=>ChooseCrosshairMonitor(device));
-                chip.Tag=device;chip.Padding=new Thickness(16,8,16,8);chip.FontSize=13;chip.MinHeight=0;chip.Margin=new Thickness(0,0,6,6);
+                // "Display 1", "Display 2", each with a small monitor icon.
+                var icon=Design.Icon("Monitor",16);icon.Margin=new Thickness(0,0,9,0);icon.VerticalAlignment=VerticalAlignment.Center;
+                var label=new TextBlock {Text="Display "+(i+1),FontSize=13,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center};
+                var content=new StackPanel {Orientation=Orientation.Horizontal};content.Children.Add(icon);content.Children.Add(label);
+                var chip=Action("",()=>ChooseCrosshairMonitor(device));
+                chip.Content=content;chip.ToolTip=screen.Bounds.Width+" \u00D7 "+screen.Bounds.Height+(screen.Primary?" (main display)":"");
+                chip.Tag=device;chip.Padding=new Thickness(14,8,18,8);chip.FontSize=13;chip.MinHeight=0;chip.Margin=new Thickness(0,0,6,6);
                 System.Windows.Automation.AutomationProperties.SetName(chip,"Crosshair on display "+(i+1));
                 crosshairMonitorButtons.Add(chip);row.Children.Add(chip);
             }
@@ -433,7 +438,7 @@ namespace Lucent
             foreach(var screen in screens)if(screen.Primary)return screen.DeviceName;
             return "";
         }
-        void ShowCrosshairMonitor(){string chosen=ChosenCrosshairMonitor();foreach(var chip in crosshairMonitorButtons)StyleChoice(chip,Equals(chip.Tag,chosen));}
+        void ShowCrosshairMonitor(){string chosen=ChosenCrosshairMonitor();foreach(var chip in crosshairMonitorButtons)chip.SetResourceReference(Control.BackgroundProperty,Equals(chip.Tag,chosen)?"AdaptiveSelectionBrush":"AdaptiveControlBrush");}
         internal void ChooseCrosshairMonitor(string device)
         {
             preferences.CrosshairMonitor=device;

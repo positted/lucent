@@ -315,11 +315,11 @@ namespace Lucent
             // ---- Places to go: a grid of tiles.
             page.Children.Add(new TextBlock {Text="Links and folders",FontSize=15,FontWeight=FontWeights.Bold,Margin=new Thickness(4,6,0,10)});
             var tiles=new WrapPanel();
-            tiles.Children.Add(AboutTile("Support","Support on Ko-fi","https://ko-fi.com/lucent_"));
-            tiles.Children.Add(AboutTile("About","Report a bug","https://github.com/"+Updates.DefaultSource+"/issues"));
-            tiles.Children.Add(AboutTile("Folder","App folder",AppDomain.CurrentDomain.BaseDirectory));
-            tiles.Children.Add(AboutTile("Folder","Settings folder",StateStore.Folder));
-            tiles.Children.Add(AboutTile("Document","Font license",System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"fonts","LICENSE.txt")));
+            tiles.Children.Add(AboutTile("Support","Support on Ko-fi","Optional, and always free to skip","https://ko-fi.com/lucent_"));
+            tiles.Children.Add(AboutTile("About","Report a bug","Opens the issues page on GitHub","https://github.com/"+Updates.DefaultSource+"/issues"));
+            tiles.Children.Add(AboutTile("Folder","App folder","Where Lucent is installed",AppDomain.CurrentDomain.BaseDirectory));
+            tiles.Children.Add(AboutTile("Folder","Settings folder","Your saved settings and profiles",StateStore.Folder));
+            tiles.Children.Add(AboutTile("Document","Font license","The license of the fonts Lucent uses",System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"fonts","LICENSE.txt")));
             tiles.SizeChanged+=(s,e)=>
             {
                 int across=e.NewSize.Width>620?3:2;
@@ -330,19 +330,23 @@ namespace Lucent
             page.Children.Add(new TextBlock {Text="Made by positted, with Claude. Free and open source (MIT).",FontSize=12,Foreground=Muted,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,14,0,4)});
             return new Border {Child=page,Background=Brushes.Transparent};
         }
-        // A tile of the About grid: the icon above its name. Opens a folder, a file or a page of this project.
-        Border AboutTile(string icon,string text,string target)
+        // A tile of the About grid, built like the cards of the settings grid: its icon in a rounded square, its name and a line about it.
+        // Opens a folder, a file or a page of this project.
+        Border AboutTile(string icon,string text,string detail,string target)
         {
-            var column=new StackPanel {HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
-            var mark=Design.SettingsIcon(icon,22);
-            mark.HorizontalAlignment=HorizontalAlignment.Center;
-            column.Children.Add(mark);
-            column.Children.Add(new TextBlock {Text=text,FontSize=13,FontWeight=FontWeights.SemiBold,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,9,0,0)});
+            var mark=Design.SettingsIcon(icon,20);
+            mark.HorizontalAlignment=HorizontalAlignment.Center;mark.VerticalAlignment=VerticalAlignment.Center;
+            var tile=new Border {Width=42,Height=42,CornerRadius=new CornerRadius(12),Background=new SolidColorBrush(Color.FromArgb(26,255,255,255)),Margin=new Thickness(0,0,13,0),VerticalAlignment=VerticalAlignment.Center,Child=mark};
+            var copy=new StackPanel {VerticalAlignment=VerticalAlignment.Center};
+            copy.Children.Add(new TextBlock {Text=text,FontSize=14,FontWeight=FontWeights.Bold,TextTrimming=TextTrimming.CharacterEllipsis});
+            copy.Children.Add(new TextBlock {Text=detail,FontSize=12,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,2,0,0)});
+            var row=new DockPanel {LastChildFill=true};
+            DockPanel.SetDock(tile,Dock.Left);row.Children.Add(tile);row.Children.Add(copy);
             var link=Action("",()=>{if(!TestMode)System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(target){UseShellExecute=true});});
-            link.Content=column;
+            link.Content=row;
             link.Style=(Style)Resources["SettingsRow"];
-            link.Padding=new Thickness(10,18,10,16);link.MinHeight=88;
-            link.HorizontalContentAlignment=HorizontalAlignment.Center;
+            link.Padding=new Thickness(14,12,14,12);link.MinHeight=72;
+            link.HorizontalContentAlignment=HorizontalAlignment.Stretch;link.VerticalContentAlignment=VerticalAlignment.Center;
             System.Windows.Automation.AutomationProperties.SetName(link,text);
             return new Border {Child=link,Background=settingsGroupSurface,CornerRadius=new CornerRadius(16),Margin=new Thickness(0,0,10,10),ClipToBounds=true};
         }    }

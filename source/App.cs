@@ -596,6 +596,18 @@ namespace Lucent
                 SmallChange = suffix == "×" ? .1 : 1, ToolTip = label, IsMoveToPointEnabled=true
             };
             sliders[label] = slider;
+            // Vibrance gets a rainbow strip under it that fades in as the value climbs.
+            Border strip = null;
+            if (hero)
+            {
+                var rainbow = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0) };
+                rainbow.GradientStops.Add(new GradientStop(Color.FromRgb(255, 92, 140), 0));
+                rainbow.GradientStops.Add(new GradientStop(Color.FromRgb(255, 176, 64), .25));
+                rainbow.GradientStops.Add(new GradientStop(Color.FromRgb(110, 240, 160), .5));
+                rainbow.GradientStops.Add(new GradientStop(Color.FromRgb(90, 210, 255), .75));
+                rainbow.GradientStops.Add(new GradientStop(Color.FromRgb(168, 120, 255), 1));
+                strip = new Border { Height = 5, CornerRadius = new CornerRadius(3), Margin = new Thickness(2, -2, 2, 10), Opacity = 0, IsHitTestVisible = false, Background = rainbow };
+            }
             if (eyeCare)
             {
                 var row = new Grid();
@@ -640,12 +652,28 @@ namespace Lucent
                     parent.Children.Add(row);
                 }
                 parent.Children.Add(slider);
+                if (strip != null) parent.Children.Add(strip);
             }
             var glow = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.White, ShadowDepth = 0 };
             slider.Effect = null;
+            Func<Color, Color, double, Color> mix = (a, b, t) => Color.FromRgb((byte)Math.Round(a.R + (b.R - a.R) * t), (byte)Math.Round(a.G + (b.G - a.G) * t), (byte)Math.Round(a.B + (b.B - a.B) * t));
             Action updateGlow = () =>
             {
                 double power = (slider.Value - min) / (max - min);
+                if (hero)
+                {
+                    // The higher the vibrance, the cooler it looks: white at 100%, an icy cyan glow around 200%, and at 300% a hot pink-violet glow, a gradient number and the full rainbow strip.
+                    var cyan = Color.FromRgb(90, 210, 255);
+                    var pink = Color.FromRgb(255, 92, 178);
+                    var accent = power < .5 ? mix(Colors.White, cyan, power / .5) : mix(cyan, pink, (power - .5) / .5);
+                    glow.Color = accent;
+                    glow.BlurRadius = 6 + power * 36;
+                    glow.Opacity = .1 + power * .85;
+                    slider.Effect = power > .02 ? glow : null;
+                    strip.Opacity = Math.Min(1, power * 1.2);
+                    number.Foreground = power < .02 ? (Brush)Brushes.White : new LinearGradientBrush(accent, mix(accent, Color.FromRgb(255, 176, 64), power), 0);
+                    return;
+                }
                 glow.BlurRadius = 8 + power * 20;
                 glow.Opacity = .14 + power * .43;
             };

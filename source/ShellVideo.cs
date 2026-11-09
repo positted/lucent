@@ -67,7 +67,7 @@ namespace Lucent
                 var mark=new Border
                 {
                     Width=22,Height=22,CornerRadius=new CornerRadius(11),Background=Brushes.White,VerticalAlignment=VerticalAlignment.Center,
-                    Child=new TextBlock {Text="✓",Foreground=Brushes.Black,FontWeight=FontWeights.Bold,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center}
+                    Child=new Viewbox {Width=12,Height=12,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center,Child=new Canvas {Width=20,Height=20,Children={new System.Windows.Shapes.Path {Data=Geometry.Parse("M3,10.5 L8,15.5 L17,5"),Stroke=Brushes.Black,StrokeThickness=3.2,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round,StrokeLineJoin=PenLineJoin.Round}}}}
                     };
                 DockPanel.SetDock(mark,Dock.Right);row.Children.Add(mark);
                 var monitorIcon=Art.Icon("Monitor",29);DockPanel.SetDock(monitorIcon,Dock.Left);row.Children.Add(monitorIcon);
@@ -89,9 +89,12 @@ namespace Lucent
             // The look controls on the left; quick looks and eye breaks fill the space on the right.
             var main = new StackPanel();
             var aside = new StackPanel();
-            stack.Children.Add(ResponsiveColumns(main, aside, 1.7));
+            // Vibrance and the quick looks on one row; Eye Care and Color Blindness on the next, in the same two columns, so Eye Care lines up under Vibrance.
+            var mainLow = new StackPanel();
+            var asideLow = new StackPanel();
+            stack.Children.Add(ResponsiveColumns(main, aside, 1.3));
+            stack.Children.Add(ResponsiveColumns(mainLow, asideLow, 1.3));
             aside.Children.Add(PresetsCard());
-            aside.Children.Add(BreakCard());
 
             var vibrance = Section("Vibrance", "");
             main.Children.Add(vibrance);
@@ -100,7 +103,7 @@ namespace Lucent
             var scale = new Grid { Margin = new Thickness(13, 0, 13, 0) };
             for (int step = 0; step < 3; step++)
             {
-                var tick = Text(step==0?"100% · Neutral":(100 + step * 100).ToString() + "%", 13);
+                var tick = Text(step==0?"100% · Neutral":step==2?"300% · Max":(100 + step * 100).ToString() + "%", 13);
                 tick.Foreground = Muted;
                 tick.HorizontalAlignment = step == 0 ? HorizontalAlignment.Left
                     : step == 1 ? HorizontalAlignment.Center : HorizontalAlignment.Right;
@@ -108,16 +111,16 @@ namespace Lucent
             }
             vibrance.Children.Add(scale);
             var care = VideoCard("Eye Care", "EyeCare");
-            main.Children.Add(care);
+            mainLow.Children.Add(care);
             AddSlider(care, "Red Filter", 0, 100, current.Red, value => current.Red = value, "%");
             AddSlider(care, "Screen Dim", 0, 85, current.Dim, value => current.Dim = value, "%");
             var vision = Section("Color Blindness", "");
-            main.Children.Add(vision);
+            asideLow.Children.Add(vision);
             vision.Content.Margin=new Thickness(20,15,20,15);
             vision.Children.Clear();
-            var visionRow=new WrapPanel {VerticalAlignment=VerticalAlignment.Center};
+            var visionRow=new StackPanel {VerticalAlignment=VerticalAlignment.Center};
             var visionTitle=IconLabel("Vision","Color Blindness",16,true);
-            visionTitle.Margin=new Thickness(0,8,18,8);
+            visionTitle.Margin=new Thickness(0,0,0,10);
             visionRow.Children.Add(visionTitle);
             var chips = new WrapPanel();
             foreach (string value in new[] { "Normal", "Protanopia", "Deuteranopia", "Tritanopia" })
@@ -151,7 +154,7 @@ namespace Lucent
                     recover.Visibility=Visibility.Collapsed;
                     SetStatus("Software color recovery completed");
                 });
-                main.Children.Add(recover);
+                stack.Children.Add(recover);
             }
             return stack;
         }

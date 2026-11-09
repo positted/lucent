@@ -394,19 +394,7 @@ class ModernUiTests
   preset("Neutral").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(look.Saturation==100&&look.Red==0&&look.Dim==0,"The Neutral look did not clear everything");
   Check(ColorMath.Equal(ColorMath.Build(look),ColorMath.Identity()),"Neutral should leave the display untouched");
   Call(shell,"LoadLook",keptColor,"Desktop");
-  // Eye breaks: every minute counts, a reminder comes at the chosen interval, and a game in use never counts.
-  var breakPrefs=(Preferences)Field(shell,"preferences");bool keptBreak=breakPrefs.BreakReminders;int keptMinutes=breakPrefs.BreakMinutes;
-  Visuals<CheckBox>(page).First(c=>Equals(c.Content,"Remind me to take breaks")).RaiseEvent(new RoutedEventArgs(CheckBox.ClickEvent));
-  Visuals<Button>(page).First(b=>Equals(b.Content,"20 min")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-  var tick=typeof(Shell).GetMethod("BreakTick",BindingFlags.Instance|BindingFlags.NonPublic);Func<bool> minute=()=>(bool)tick.Invoke(shell,null);
-  breakPrefs.BreakReminders=true;breakPrefs.BreakMinutes=20;Call(shell,"ShowPage","Video");
-  Visuals<Button>(page).First(b=>Equals(b.Content,"20 min")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-  bool early=false;for(int i=0;i<19;i++)early|=minute();bool due=minute();
-  Check(!early&&due,"The break reminder should come on the twentieth minute");
-  bool again=false;for(int i=0;i<19;i++)again|=minute();Check(!again&&minute(),"The next reminder should be another twenty minutes later");
-  Call(shell,"LoadLook",new Look(),"Some game");bool inGame=false;for(int i=0;i<40;i++)inGame|=minute();Check(!inGame,"A reminder must not appear while a game profile is in use");
-  Call(shell,"LoadLook",keptColor,"Desktop");breakPrefs.BreakReminders=false;Check(!minute(),"Reminders should be silent when turned off");
-  breakPrefs.BreakReminders=keptBreak;breakPrefs.BreakMinutes=keptMinutes;
+  Check(!Visuals<SmoothText>(page).Any(w=>w.Text=="Eye breaks")&&!Visuals<CheckBox>(page).Any(c=>Equals(c.Content,"Remind me to take breaks")),"Eye breaks should be gone from the Color page");
  }
  static async Task CheckProfilesPage(Shell shell)
  {
@@ -473,7 +461,7 @@ class ModernUiTests
   // ---- The right-click menu from the tray: rows in order, a rounded card, arrow keys, Esc and a click that runs the row.
   var entries=(System.Collections.Generic.List<TrayEntry>)Call(shell,"TrayEntries");
   var titles=entries.Where(e=>!e.Separator).Select(e=>e.Title).ToArray();
-  Check(string.Join("|",titles)=="Open Lucent|Color|Display|Profiles|Crosshair|Boost|Vision|Settings|Switch resolution|Close Lucent"&&entries.Last().Danger,"The tray menu rows are wrong: "+string.Join("|",titles));
+  Check(string.Join("|",titles)=="Open Lucent|Color|Display|Crosshair|Profiles|Vision|Boost|Settings|Switch resolution|Close Lucent"&&entries.Last().Danger,"The tray menu rows are wrong: "+string.Join("|",titles));
   string ran=null;var popup=new TrayPopup("1920 \u00D7 1080 \u00B7 300 Hz",new[]{TrayEntry.Line("Home","One",()=>ran="one"),TrayEntry.Divider(),TrayEntry.Line("Video","Two",()=>ran="two"),TrayEntry.Line("Power","Three",()=>ran="three",null,true)}){Left=-20000,Top=-20000,ShowActivated=false};
   popup.Show();await Until(()=>popup.Opacity>.99);
   Check(popup.AllowsTransparency&&popup.Card.CornerRadius.TopLeft>=16&&popup.Card.CornerRadius.BottomRight>=16&&!popup.ShowInTaskbar&&popup.Topmost,"The tray menu should be a transparent window with a rounded card");

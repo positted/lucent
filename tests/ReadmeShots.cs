@@ -172,6 +172,7 @@ class ReadmeShots
    shell.Width=1500;shell.Height=940;shell.UpdateLayout();await Task.Delay(900);
    Call(shell,"SetSettingsOpen",true);await Task.Delay(1900);Shot(shell,Path.Combine(output,"settings-grid.png"));
    Call(shell,"SelectSettingsCategory","About");await Task.Delay(1200);Shot(shell,Path.Combine(output,"settings-about.png"));
+   ((System.Windows.Controls.ScrollViewer)F(shell,"settingsScroll").GetValue(shell)).ScrollToEnd();await Task.Delay(700);Shot(shell,Path.Combine(output,"settings-about-links.png"));
    Call(shell,"SelectSettingsCategory","General");await Task.Delay(1000);Shot(shell,Path.Combine(output,"settings-general.png"));
    Call(shell,"SetSettingsOpen",false);await Task.Delay(900);
   }
