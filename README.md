@@ -126,6 +126,8 @@ Ask questions, share your game profiles and crosshair codes, and tell me what to
 
 ## Support Lucent
 
+<a href="https://ko-fi.com/lucent_"><img align="right" src="docs/images/kofi-banner.svg" alt="Buy me a coffee. Support Lucent on Ko-fi" width="270"></a>
+
 Lucent is free and stays free. If it saved you some time, you can [buy me a coffee on Ko-fi](https://ko-fi.com/lucent_). Starring the repository, reporting bugs and telling a friend help just as much.
 
 ## Credits
