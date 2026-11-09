@@ -9,9 +9,7 @@
 
 Free and open source (MIT) · Windows 10 / 11 · **[Download Lucent-Setup.exe](https://github.com/positted/lucent/releases/latest/download/Lucent-Setup.exe)**
 
-<a href="https://github.com/positted/lucent/discussions"><img src="docs/images/discord-banner.svg" alt="Come say hello! Join our community on Discord" width="328"></a> &nbsp; <a href="https://ko-fi.com/lucent_"><img src="docs/images/kofi-banner.svg" alt="Buy me a coffee. Support Lucent on Ko-fi" width="328"></a>
-
-<!-- Discord server not made yet: the community banner points to GitHub Discussions for now. Swap the link for the invite later. -->
+<a href="https://ko-fi.com/lucent_"><img src="docs/images/kofi-banner.svg" alt="Buy me a coffee. Support Lucent on Ko-fi" width="328"></a>
 
 </div>
 
