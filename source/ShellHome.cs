@@ -21,17 +21,92 @@ namespace Lucent
         FrameworkElement HomePage()
         {
             var stack=Page("Home","What is on right now, and the quickest ways to change it.");
-            var main=new StackPanel();
-            main.Children.Add(HomeUpdateCard());
-            main.Children.Add(HomeDisplayCard());
-            main.Children.Add(HomePcCard());
-            main.Children.Add(HomeTiles());
-            var aside=new StackPanel();
-            aside.Children.Add(HomeNowPlaying());
-            aside.Children.Add(HomeShortcuts());
-            stack.Children.Add(ResponsiveColumns(main,aside,1.45));
+            stack.Children.Add(HomeEditBar());
+            stack.Children.Add(HomeUpdateCard());
+            // The cards flow in the order and widths you chose (Customize Home): half-width cards sit two to a row, full-width ones take a row.
+            homeFlow=new HomeFlow();
+            homeSlots.Clear();
+            var cards=new Dictionary<string,FrameworkElement>{{"display",HomeDisplayCard()},{"pc",HomePcCard()},{"playing",HomeNowPlaying()},{"shortcuts",HomeShortcuts()}};
+            foreach(var key in HomeLayoutText.Keys)homeSlots.Add(MakeHomeSlot(key,cards[key]));
+            stack.Children.Add(homeFlow);
+            ApplyHomeLayout();
             UpdateHome();
             return stack;
+        }
+        // ---- Customize Home: hide, reorder and resize the cards. Saved in preferences.HomeLayout.
+        HomeFlow homeFlow;
+        readonly List<HomeSlot> homeSlots=new List<HomeSlot>();
+        bool homeEditing;
+        Button homeEditButton,homeResetButton;
+        FrameworkElement HomeEditBar()
+        {
+            var bar=new WrapPanel {Margin=new Thickness(0,-12,0,14)};
+            homeEditButton=Action("Customize Home",()=>SetHomeEditing(!homeEditing));
+            homeResetButton=Action("Reset layout",ResetHomeLayout);
+            homeResetButton.Visibility=Visibility.Collapsed;
+            System.Windows.Automation.AutomationProperties.SetName(homeEditButton,"Customize Home");
+            bar.Children.Add(homeEditButton);bar.Children.Add(homeResetButton);
+            return bar;
+        }
+        internal void SetHomeEditing(bool on)
+        {
+            homeEditing=on;
+            homeEditButton.Content=on?"Done":"Customize Home";
+            homeResetButton.Visibility=on?Visibility.Visible:Visibility.Collapsed;
+            if(homeFlow!=null)homeFlow.Editing=on;
+            foreach(var slot in homeSlots)slot.ShowTools(on);
+            ApplyHomeLayout();
+        }
+        void ResetHomeLayout()
+        {
+            preferences.HomeLayout=HomeLayoutText.Clean("");
+            var entries=HomeLayoutText.Parse(preferences.HomeLayout);
+            homeSlots.Sort((a,b)=>entries.FindIndex(x=>x.Key==a.Key).CompareTo(entries.FindIndex(x=>x.Key==b.Key)));
+            foreach(var slot in homeSlots){var entry=entries.First(x=>x.Key==slot.Key);slot.Full=entry.Full;slot.Hidden=entry.Hidden;}
+            SaveSoon();ApplyHomeLayout();
+        }
+        HomeSlot MakeHomeSlot(string key,FrameworkElement card)
+        {
+            var slot=new HomeSlot(key,card);
+            slot.Earlier=Action("‹",()=>MoveHomeSlot(slot,-1));
+            slot.Later=Action("›",()=>MoveHomeSlot(slot,1));
+            slot.Size=Action("",()=>{slot.Full=!slot.Full;HomeLayoutChanged();});
+            slot.Visible=Action("",()=>{slot.Hidden=!slot.Hidden;HomeLayoutChanged();});
+            foreach(var button in new[]{slot.Earlier,slot.Later,slot.Size,slot.Visible}){button.Padding=new Thickness(11,4,11,4);button.MinHeight=0;button.FontSize=12;button.Margin=new Thickness(4,0,0,0);}
+            System.Windows.Automation.AutomationProperties.SetName(slot.Earlier,"Move "+HomeLayoutText.Title(key)+" earlier");
+            System.Windows.Automation.AutomationProperties.SetName(slot.Later,"Move "+HomeLayoutText.Title(key)+" later");
+            System.Windows.Automation.AutomationProperties.SetName(slot.Size,"Resize "+HomeLayoutText.Title(key));
+            System.Windows.Automation.AutomationProperties.SetName(slot.Visible,"Hide or show "+HomeLayoutText.Title(key));
+            slot.BuildTools();
+            var entry=HomeLayoutText.Parse(preferences.HomeLayout).First(x=>x.Key==key);
+            slot.Full=entry.Full;slot.Hidden=entry.Hidden;
+            return slot;
+        }
+        void MoveHomeSlot(HomeSlot slot,int direction)
+        {
+            int at=homeSlots.IndexOf(slot),to=at+direction;
+            if(to<0||to>=homeSlots.Count)return;
+            homeSlots.RemoveAt(at);homeSlots.Insert(to,slot);
+            HomeLayoutChanged();
+        }
+        void HomeLayoutChanged()
+        {
+            preferences.HomeLayout=HomeLayoutText.Serialize(homeSlots.Select(s=>new HomeLayoutText.Entry {Key=s.Key,Full=s.Full,Hidden=s.Hidden}));
+            SaveSoon();ApplyHomeLayout();
+        }
+        // Puts the slots into the panel in order, with their widths and labels.
+        void ApplyHomeLayout()
+        {
+            if(homeFlow==null)return;
+            homeFlow.Children.Clear();
+            for(int i=0;i<homeSlots.Count;i++)
+            {
+                var slot=homeSlots[i];
+                HomeFlow.SetFull(slot,slot.Full);
+                slot.Refresh(i>0,i<homeSlots.Count-1,homeEditing);
+                homeFlow.Children.Add(slot);
+            }
+            homeFlow.InvalidateMeasure();
         }
         internal void UpdateHome()
         {
@@ -159,37 +234,6 @@ namespace Lucent
             });
             return card;
         }
-        FrameworkElement HomeTiles()
-        {
-            var card=Section("Quick actions","");
-            var tiles=new WrapPanel();
-            card.Children.Add(tiles);
-            tiles.Children.Add(HomeTile("Crosshair","Crosshair",()=>crosshair==null?"Off · click to turn on":"On · click to turn off",ToggleCrosshair));
-            tiles.Children.Add(HomeTile("Profiles","Profiles",()=>preferences.AutoProfiles?"Switching automatically · "+activeProfile:"Automatic switching is off",()=>ShowPage("Profiles")));
-            tiles.Children.Add(HomeTile("Game Boost","Boost",()=>"Free memory before a game",()=>ShowPage("Game Boost")));
-            tiles.Children.Add(HomeTile("Video","Color",()=>current.Red>0?"Red filter at "+(int)current.Red+"%":"Vibrance, red filter, dimming",()=>ShowPage("Video")));
-            return card;
-        }
-        Button HomeTile(string icon,string title,Func<string> state,Action click)
-        {
-            var tile=Action("",click);
-            tile.Width=276;tile.Height=78;tile.Margin=new Thickness(0,0,12,12);tile.Padding=new Thickness(16,0,12,0);
-            tile.HorizontalContentAlignment=HorizontalAlignment.Left;
-            var row=new DockPanel {VerticalAlignment=VerticalAlignment.Center};
-            var glyph=Design.Icon(icon,22);
-            glyph.Margin=new Thickness(0,0,14,0);
-            DockPanel.SetDock(glyph,Dock.Left);
-            row.Children.Add(glyph);
-            var labels=new StackPanel {VerticalAlignment=VerticalAlignment.Center};
-            labels.Children.Add(new TextBlock {Text=title,FontSize=15,FontWeight=FontWeights.SemiBold});
-            var line=new TextBlock {FontSize=12,Foreground=Muted,TextTrimming=TextTrimming.CharacterEllipsis,FontWeight=FontWeights.Medium};
-            labels.Children.Add(line);
-            row.Children.Add(labels);
-            tile.Content=row;
-            System.Windows.Automation.AutomationProperties.SetName(tile,title);
-            homeUpdaters.Add(()=>{string text=state();SetText(line,text);tile.ToolTip=text;});
-            return tile;
-        }
         FrameworkElement HomeNowPlaying()
         {
             var card=Section("Now playing","");
@@ -274,6 +318,147 @@ namespace Lucent
             change.Padding=new Thickness(0,10,0,0);
             card.Children.Add(change);
             return card;
+        }
+    }
+
+    // The standard Home layout, and how a layout is written down in the settings file: "display:h;!pc:f;..." (h half width, f full width, ! hidden).
+    internal static class HomeLayoutText
+    {
+        internal sealed class Entry {public string Key;public bool Full,Hidden;}
+        internal static readonly string[] Keys={"display","playing","pc","shortcuts"};
+        internal static string Title(string key)
+        {
+            switch(key)
+            {
+                case "display":return "Your display";
+                case "playing":return "Now playing";
+                case "pc":return "Your PC";
+                default:return "Shortcuts";
+            }
+        }
+        static bool DefaultFull(string key){return false;}
+        // Anything unknown or repeated is dropped and anything missing is added back, so a damaged value can never lose a card.
+        internal static List<Entry> Parse(string text)
+        {
+            var result=new List<Entry>();
+            foreach(string raw in (text??"").Split(';'))
+            {
+                string token=raw.Trim();
+                if(token.Length==0)continue;
+                bool hidden=token.StartsWith("!");
+                if(hidden)token=token.Substring(1);
+                string[] parts=token.Split(':');
+                string key=parts[0].Trim().ToLowerInvariant();
+                if(Array.IndexOf(Keys,key)<0||result.Any(e=>e.Key==key))continue;
+                bool full=parts.Length>1?parts[1].Trim().ToLowerInvariant()=="f":DefaultFull(key);
+                result.Add(new Entry {Key=key,Full=full,Hidden=hidden});
+            }
+            foreach(string key in Keys)if(!result.Any(e=>e.Key==key))result.Add(new Entry {Key=key,Full=DefaultFull(key)});
+            return result;
+        }
+        internal static string Serialize(IEnumerable<Entry> entries){return string.Join(";",entries.Select(e=>(e.Hidden?"!":"")+e.Key+":"+(e.Full?"f":"h")));}
+        internal static string Clean(string text){return Serialize(Parse(text));}
+    }
+
+    // One card on Home, with the small controls that appear over it while Home is being customized.
+    internal sealed class HomeSlot:Grid
+    {
+        public readonly string Key;
+        public readonly FrameworkElement Card;
+        public bool Full,Hidden;
+        public Button Earlier,Later,Size,Visible;
+        StackPanel tools;
+        public HomeSlot(string key,FrameworkElement card)
+        {
+            Key=key;Card=card;ClipToBounds=true;Children.Add(card);
+            // A card that steps aside or comes back by itself (Now playing) makes the cards around it flow again.
+            System.ComponentModel.DependencyPropertyDescriptor.FromProperty(UIElement.VisibilityProperty,typeof(UIElement)).AddValueChanged(card,(s,e)=>
+            {
+                var flow=VisualTreeHelper.GetParent(this) as HomeFlow;
+                if(flow!=null)flow.InvalidateMeasure();
+            });
+        }
+        public void BuildTools()
+        {
+            tools=new StackPanel {Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(0,14,14,0),Visibility=Visibility.Collapsed};
+            tools.Children.Add(Earlier);tools.Children.Add(Later);tools.Children.Add(Size);tools.Children.Add(Visible);
+            Children.Add(tools);
+        }
+        public void ShowTools(bool on){if(tools!=null)tools.Visibility=on?Visibility.Visible:Visibility.Collapsed;}
+        public void Refresh(bool canEarlier,bool canLater,bool editing)
+        {
+            Earlier.IsEnabled=canEarlier;Later.IsEnabled=canLater;
+            Size.Content=Full?"Half width":"Full width";
+            Visible.Content=Hidden?"Show":"Hide";
+            // While customizing, a hidden card stays on the page, dimmed, so it can be brought back.
+            Card.Opacity=Hidden?.4:1;
+            Visibility=Hidden&&!editing?Visibility.Collapsed:Visibility.Visible;
+            ShowTools(editing);
+        }
+        // A card that is hidden, or has nothing to show (Now playing with nothing playing), takes no room.
+        public bool Absent(bool editing){return (Hidden&&!editing)||Card.Visibility==Visibility.Collapsed;}
+    }
+
+    // Lays Home's cards out: half-width ones two to a row, full-width ones on a row of their own, everything in one column when the window is narrow.
+    internal sealed class HomeFlow:Panel
+    {
+        public static readonly DependencyProperty FullProperty=DependencyProperty.RegisterAttached("Full",typeof(bool),typeof(HomeFlow),new FrameworkPropertyMetadata(false,FrameworkPropertyMetadataOptions.AffectsParentMeasure));
+        public static bool GetFull(DependencyObject element){return (bool)element.GetValue(FullProperty);}
+        public static void SetFull(DependencyObject element,bool value){element.SetValue(FullProperty,value);}
+        bool editing;
+        public bool Editing{get{return editing;}set{editing=value;InvalidateMeasure();}}
+        const double Gap=16,Narrow=760;
+        readonly List<List<HomeSlot>> rows=new List<List<HomeSlot>>();
+        readonly List<double> heights=new List<double>();
+        protected override Size MeasureOverride(Size available)
+        {
+            double width=double.IsInfinity(available.Width)?820:available.Width;
+            bool narrow=width<Narrow;
+            rows.Clear();heights.Clear();
+            List<HomeSlot> open=null;
+            foreach(UIElement element in InternalChildren)
+            {
+                var slot=element as HomeSlot;
+                if(slot==null)continue;
+                if(slot.Absent(editing)){slot.Measure(new Size(0,0));continue;}
+                if(narrow||GetFull(slot)){rows.Add(new List<HomeSlot> {slot});open=null;}
+                else if(open!=null){open.Add(slot);open=null;}
+                else{open=new List<HomeSlot> {slot};rows.Add(open);}
+            }
+            double half=Math.Max(0,(width-Gap)/2),total=0;
+            foreach(var row in rows)
+            {
+                double rowHeight=0;
+                foreach(var slot in row)
+                {
+                    slot.Measure(new Size(narrow||GetFull(slot)?width:half,double.PositiveInfinity));
+                    rowHeight=Math.Max(rowHeight,slot.DesiredSize.Height);
+                }
+                heights.Add(rowHeight);total+=rowHeight;
+            }
+            return new Size(width,total);
+        }
+        protected override Size ArrangeOverride(Size finalSize)
+        {
+            bool narrow=finalSize.Width<Narrow;
+            double y=0;
+            for(int i=0;i<rows.Count;i++)
+            {
+                double x=0;
+                foreach(var slot in rows[i])
+                {
+                    double width=narrow||GetFull(slot)?finalSize.Width:Math.Max(0,(finalSize.Width-Gap)/2);
+                    slot.Arrange(new Rect(x,y,width,heights[i]));
+                    x+=width+Gap;
+                }
+                y+=heights[i];
+            }
+            foreach(UIElement element in InternalChildren)
+            {
+                var slot=element as HomeSlot;
+                if(slot!=null&&slot.Absent(editing))slot.Arrange(new Rect(0,0,0,0));
+            }
+            return finalSize;
         }
     }
 }

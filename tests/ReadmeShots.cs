@@ -113,7 +113,7 @@ class ReadmeShots
   foreach(var file in covers)
   {
    play(file);await Task.Delay(2600);
-   var name=Path.GetFileNameWithoutExtension(file).Split(new[]{"__"},StringSplitOptions.None)[0].Replace(' ','-').ToLowerInvariant();
+   var name=System.Text.RegularExpressions.Regex.Replace(Path.GetFileNameWithoutExtension(file).Replace("__","-").ToLowerInvariant(),"[^a-z0-9]+","-").Trim('-');
    Shot(shell,Path.Combine(output,"home-"+name+".png"));
   }
   // The other pages, with the first cover.
@@ -150,6 +150,16 @@ class ReadmeShots
   Shell.ShowGameIcons=true;var found=GameLibrary.Scan();shell.SetLibrary(found);Console.WriteLine("games found: "+found.Count+" ("+string.Join(", ",found.Take(12).Select(g=>g.Name))+")");await Task.Delay(2500);
   var scroll=(System.Windows.Controls.ScrollViewer)F(shell,"contentScroll").GetValue(shell);scroll.ScrollToVerticalOffset(520);await Task.Delay(900);
   Shot(shell,Path.Combine(output,"game-profiles-games.png"));
+  // Settings, with the album cover of a song in the background: the grid of categories, then About and General.
+  {
+   var backdrop=covers.FirstOrDefault(c=>Path.GetFileNameWithoutExtension(c).EndsWith("__Hater"))??covers[0];
+   play(backdrop);Call(shell,"ShowPage","Home");await Task.Delay(1800);
+   shell.Width=1500;shell.Height=940;shell.UpdateLayout();await Task.Delay(900);
+   Call(shell,"SetSettingsOpen",true);await Task.Delay(1900);Shot(shell,Path.Combine(output,"settings-grid.png"));
+   Call(shell,"SelectSettingsCategory","About");await Task.Delay(1200);Shot(shell,Path.Combine(output,"settings-about.png"));
+   Call(shell,"SelectSettingsCategory","General");await Task.Delay(1000);Shot(shell,Path.Combine(output,"settings-general.png"));
+   Call(shell,"SetSettingsOpen",false);await Task.Delay(900);
+  }
   if(Environment.GetCommandLineArgs().Contains("band"))
   {
    // The strip of the window around the player bar over a page with text just above it: is anything blurred above the bar?
@@ -158,6 +168,15 @@ class ReadmeShots
    var scrollBand=(System.Windows.Controls.ScrollViewer)F(shell,"contentScroll").GetValue(shell);scrollBand.ScrollToVerticalOffset(300);await Task.Delay(1000);
    var barBand=(FrameworkElement)F(shell,"playerBar").GetValue(shell);var topLeftBand=barBand.PointToScreen(new System.Windows.Point(0,0));
    Save(new System.Drawing.Rectangle((int)topLeftBand.X-30,(int)topLeftBand.Y-90,(int)Math.Round(barBand.ActualWidth*scale)+60,(int)Math.Round(barBand.ActualHeight*scale)+110),Path.Combine(output,"band-check.png"),0);
+  }
+  if(Environment.GetCommandLineArgs().Contains("layout"))
+  {
+   // The new layout: Home being customized, the grid of settings, and one settings category.
+   play(covers[0]);Call(shell,"ShowPage","Home");await Task.Delay(1600);
+   Call(shell,"SetHomeEditing",true);await Task.Delay(1000);Shot(shell,Path.Combine(output,"check-home-edit.png"));Call(shell,"SetHomeEditing",false);await Task.Delay(600);
+   Call(shell,"SetSettingsOpen",true);await Task.Delay(1800);Shot(shell,Path.Combine(output,"check-settings-grid.png"));
+   Call(shell,"SelectSettingsCategory","Appearance");await Task.Delay(1000);Shot(shell,Path.Combine(output,"check-settings-appearance.png"));
+   Call(shell,"SetSettingsOpen",false);await Task.Delay(800);
   }
   shell.Close();stage.Close();
   Console.WriteLine("PASS: pictures written to "+output);

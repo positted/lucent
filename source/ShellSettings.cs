@@ -256,37 +256,24 @@ namespace Lucent
             BuildDiscordSection(SettingsSection("Discord RPC"));
             return new StackPanel();
         }
+        // About: a centered introduction (the mark, the name, the version and what you can do about it), then the updates and a grid of places to go.
         Border AboutCard()
         {
-            var surface=new Grid();
-            var watermark=Art.Logo(440);
-            watermark.Opacity=.04;
-            watermark.HorizontalAlignment=HorizontalAlignment.Right;
-            watermark.VerticalAlignment=VerticalAlignment.Center;
-            watermark.Margin=new Thickness(0,-70,-80,-70);
-            watermark.IsHitTestVisible=false;
-            surface.Children.Add(watermark);
-            var page=new StackPanel {Margin=new Thickness(28,26,28,26)};
-            surface.Children.Add(page);
+            var page=new StackPanel();
 
-            var top=new DockPanel();
+            // ---- The introduction.
+            var hero=new StackPanel {HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,26,0,26)};
+            var mark=Art.Logo(68);
+            mark.HorizontalAlignment=HorizontalAlignment.Center;
+            hero.Children.Add(mark);
+            hero.Children.Add(new TextBlock {Text="lucent",FontSize=34,FontWeight=FontWeights.Bold,FontFamily=Design.DisplayFont,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,12,0,0)});
+            hero.Children.Add(new TextBlock {Text="Your display, your games and your music, in one window.",FontSize=14,Foreground=Muted,TextAlignment=TextAlignment.Center,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,6,0,16)});
             var badge=new StackPanel {Orientation=Orientation.Horizontal};
             badge.Children.Add(new System.Windows.Shapes.Ellipse {Width=7,Height=7,Fill=new SolidColorBrush(Color.FromRgb(46,204,113)),VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,8,0)});
             badge.Children.Add(new TextBlock {Text="v"+Design.Version,FontSize=13,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});
-            var version=new Border {Child=badge,Background=new SolidColorBrush(Color.FromRgb(56,56,58)),CornerRadius=new CornerRadius(15),Padding=new Thickness(12,6,14,6),VerticalAlignment=VerticalAlignment.Top};
-            DockPanel.SetDock(version,Dock.Right);
-            top.Children.Add(version);
-            var brand=new StackPanel();
-            var mark=Art.Logo(46);
-            mark.HorizontalAlignment=HorizontalAlignment.Left;
-            brand.Children.Add(mark);
-            brand.Children.Add(new TextBlock {Text="lucent",FontSize=26,FontWeight=FontWeights.Bold,FontFamily=Design.DisplayFont,Margin=new Thickness(0,10,0,0)});
-            top.Children.Add(brand);
-            page.Children.Add(top);
-
+            hero.Children.Add(new Border {Child=badge,Background=new SolidColorBrush(Color.FromArgb(38,255,255,255)),CornerRadius=new CornerRadius(15),Padding=new Thickness(13,6,15,6),HorizontalAlignment=HorizontalAlignment.Center});
             string built=System.IO.File.GetLastWriteTime(System.Reflection.Assembly.GetExecutingAssembly().Location).ToString("d MMM yyyy",System.Globalization.CultureInfo.InvariantCulture);
-            page.Children.Add(new TextBlock {Text="Version "+Design.Version+" \u00B7 Built "+built,FontSize=13,Foreground=Muted,Margin=new Thickness(0,64,0,12)});
-
+            hero.Children.Add(new TextBlock {Text="Version "+Design.Version+" \u00B7 Built "+built,FontSize=12,Foreground=Muted,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,10,0,14)});
             var copyLabel=new TextBlock {Text="Copy version info",FontSize=14,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center};
             var copyIcon=Design.SettingsIcon("Copy",16,new SolidColorBrush(Color.FromRgb(17,17,17)));
             copyIcon.Margin=new Thickness(0,0,10,0);
@@ -302,36 +289,61 @@ namespace Lucent
             });
             copy.Style=(Style)Resources["PrimaryAction"];
             copy.Content=copyRow;
-            copy.Padding=new Thickness(18,11,20,11);
-            copy.Margin=new Thickness(0,0,0,22);
-            page.Children.Add(UpdatesBlock());
-            page.Children.Add(copy);
+            copy.Padding=new Thickness(20,10,22,10);
 
-            var links=new WrapPanel();
-            links.Children.Add(AboutLink("GitHub","GitHub","https://github.com/"+Updates.DefaultSource));
-            links.Children.Add(AboutLink("Support","Support on Ko-fi","https://ko-fi.com/lucent_"));
-            links.Children.Add(AboutLink("About","Report a bug","https://github.com/"+Updates.DefaultSource+"/issues"));
-            links.Children.Add(AboutLink("Folder","App folder",AppDomain.CurrentDomain.BaseDirectory));
-            links.Children.Add(AboutLink("Folder","Settings folder",StateStore.Folder));
-            links.Children.Add(AboutLink("Document","Font license",System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"fonts","LICENSE.txt")));
-            page.Children.Add(links);
+            // Copy the version, or go to the project: both sit under the version where they can be seen straight away.
+            var githubIcon=Design.SettingsIcon("GitHub",16);
+            githubIcon.Margin=new Thickness(0,0,9,0);
+            var githubRow=new StackPanel {Orientation=Orientation.Horizontal};
+            githubRow.Children.Add(githubIcon);
+            githubRow.Children.Add(new TextBlock {Text="GitHub",FontSize=14,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});
+            var github=Action("",()=>{if(!TestMode)System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/"+Updates.DefaultSource){UseShellExecute=true});});
+            github.Content=githubRow;
+            github.Padding=new Thickness(18,10,20,10);github.Margin=new Thickness(10,0,0,0);
+            System.Windows.Automation.AutomationProperties.SetName(github,"GitHub");
+            var heroButtons=new StackPanel {Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Center};
+            heroButtons.Children.Add(copy);heroButtons.Children.Add(github);
+            hero.Children.Add(heroButtons);
+            var heroCard=new Border {Child=hero,CornerRadius=new CornerRadius(20),Margin=new Thickness(0,0,0,14),Background=new RadialGradientBrush(Color.FromArgb(34,255,255,255),Color.FromArgb(0,255,255,255)){Center=new Point(.5,.28),GradientOrigin=new Point(.5,.28),RadiusX=.75,RadiusY=.95}};
+            page.Children.Add(heroCard);
 
-            surface.SizeChanged+=(s,e)=>surface.Clip=new RectangleGeometry(new Rect(e.NewSize),20,20);
-            return new Border {Child=surface,Background=settingsGroupSurface,CornerRadius=new CornerRadius(20)};
+            // ---- Updates, in a card of their own.
+            var updates=UpdatesBlock();
+            updates.Margin=new Thickness(0);
+            page.Children.Add(new Border {Child=updates,Background=settingsGroupSurface,CornerRadius=new CornerRadius(18),Padding=new Thickness(22,20,22,20),Margin=new Thickness(0,0,0,14)});
+
+            // ---- Places to go: a grid of tiles.
+            page.Children.Add(new TextBlock {Text="Links and folders",FontSize=15,FontWeight=FontWeights.Bold,Margin=new Thickness(4,6,0,10)});
+            var tiles=new WrapPanel();
+            tiles.Children.Add(AboutTile("Support","Support on Ko-fi","https://ko-fi.com/lucent_"));
+            tiles.Children.Add(AboutTile("About","Report a bug","https://github.com/"+Updates.DefaultSource+"/issues"));
+            tiles.Children.Add(AboutTile("Folder","App folder",AppDomain.CurrentDomain.BaseDirectory));
+            tiles.Children.Add(AboutTile("Folder","Settings folder",StateStore.Folder));
+            tiles.Children.Add(AboutTile("Document","Font license",System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"fonts","LICENSE.txt")));
+            tiles.SizeChanged+=(s,e)=>
+            {
+                int across=e.NewSize.Width>620?3:2;
+                double width=Math.Max(120,Math.Floor((e.NewSize.Width-across*10)/across));
+                foreach(FrameworkElement child in tiles.Children)child.Width=width;
+            };
+            page.Children.Add(tiles);
+            page.Children.Add(new TextBlock {Text="Made by positted, with Claude. Free and open source (MIT).",FontSize=12,Foreground=Muted,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,14,0,4)});
+            return new Border {Child=page,Background=Brushes.Transparent};
         }
-        Button AboutLink(string icon,string text,string target)
+        // A tile of the About grid: the icon above its name. Opens a folder, a file or a page of this project.
+        Border AboutTile(string icon,string text,string target)
         {
-            var row=new StackPanel {Orientation=Orientation.Horizontal};
-            var mark=Design.SettingsIcon(icon,15);
-            mark.Margin=new Thickness(0,0,9,0);
-            row.Children.Add(mark);
-            row.Children.Add(new TextBlock {Text=text,FontSize=13,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});
+            var column=new StackPanel {HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
+            var mark=Design.SettingsIcon(icon,22);
+            mark.HorizontalAlignment=HorizontalAlignment.Center;
+            column.Children.Add(mark);
+            column.Children.Add(new TextBlock {Text=text,FontSize=13,FontWeight=FontWeights.SemiBold,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,9,0,0)});
             var link=Action("",()=>{if(!TestMode)System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(target){UseShellExecute=true});});
-            link.Content=row;
-            link.Background=new SolidColorBrush(Color.FromRgb(52,52,54));
-            link.Padding=new Thickness(13,9,14,9);
-            link.Margin=new Thickness(0,0,8,8);
-            return link;
-        }
-    }
+            link.Content=column;
+            link.Style=(Style)Resources["SettingsRow"];
+            link.Padding=new Thickness(10,18,10,16);link.MinHeight=88;
+            link.HorizontalContentAlignment=HorizontalAlignment.Center;
+            System.Windows.Automation.AutomationProperties.SetName(link,text);
+            return new Border {Child=link,Background=settingsGroupSurface,CornerRadius=new CornerRadius(16),Margin=new Thickness(0,0,10,10),ClipToBounds=true};
+        }    }
 }

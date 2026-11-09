@@ -74,6 +74,8 @@ namespace Lucent
         public string PcRings="CPU,CPU temp,RAM,GPU,GPU temp";
         // Temperatures on Home in Fahrenheit instead of Celsius.
         public bool Fahrenheit=false;
+        // How Home is laid out: its cards in order, each "name:h" (half width) or "name:f" (full width), with a "!" in front when hidden. Empty means the standard layout.
+        public string HomeLayout="";
         // The mini player: lyrics text size and alignment, which views hide their controls while the pointer rests, how fast its background drifts,
         // and the size each view was last given (0 means the default).
         public double MiniLyricsSize=26,MiniBackdropSpeed=1,MiniCompactWidth,MiniLyricsWidth,MiniLyricsHeight;
@@ -84,7 +86,9 @@ namespace Lucent
         // Where new versions are announced ("owner/repository" or an https address) and the last version the user was told about.
         public string UpdateSource="",NotifiedVersion="",PopupVersion="";
         // Discord Rich Presence (off until switched on): shown only while a game from a game profile is running; the elapsed time and the Get Lucent button.
-        public bool DiscordOn=false,DiscordTimeline=true,DiscordButton=true,DiscordIdle=true,DiscordSongs=true,DiscordCompeting=true;
+        public bool DiscordOn=true,DiscordTimeline=true,DiscordButton=true,DiscordIdle=true,DiscordSongs=true,DiscordCompeting=true;
+        // Discord Rich Presence is on by default. Settings saved before this was decided are turned on once (version 1); after that the switch in Settings is respected.
+        public int DiscordSettingVersion;
         public bool AdaptiveTheme=true;
         // How strongly the artwork colors the app is one fixed amount (there is no setting for it): the colors stay calm, a little like the dark, warm look of a music app.
         public const double FixedIntensity=.3;
@@ -180,6 +184,8 @@ namespace Lucent
             foreach(var saved in value.SavedCrosshairs)saved.Clamp();
             if(value.PlayerPosition!="Left"&&value.PlayerPosition!="Right")value.PlayerPosition="Middle";
             value.PcRings=SystemStats.CleanRings(value.PcRings);
+            value.HomeLayout=HomeLayoutText.Clean(value.HomeLayout);
+            if(value.DiscordSettingVersion<1){value.DiscordOn=true;value.DiscordSettingVersion=1;}
             if(value.Stats==null)value.Stats=new UsageStats();
             var counts=value.Stats;counts.Launches=Math.Max(0,counts.Launches);counts.MinutesOpen=Math.Max(0,counts.MinutesOpen);counts.ResolutionSwitches=Math.Max(0,counts.ResolutionSwitches);counts.ZoomUses=Math.Max(0,counts.ZoomUses);counts.GamesStarted=Math.Max(0,counts.GamesStarted);counts.ProfileSwitches=Math.Max(0,counts.ProfileSwitches);counts.MemoryCleanups=Math.Max(0,counts.MemoryCleanups);counts.CrosshairUses=Math.Max(0,counts.CrosshairUses);
             if(string.IsNullOrEmpty(counts.Since))counts.Since=DateTime.Now.ToString("yyyy-MM-dd");

@@ -44,7 +44,7 @@ I write and test it myself on my own PC, so if something looks off or breaks on 
 
 ## Colors that follow the music
 
-Put a song on and Lucent changes with it. Every album cover gives the window its own mood: cool blue, warm red, dusty gold. Lucent looks at the whole cover and goes with the color there is the most of, so one small patch of another color will not take over.
+Put a song on and Lucent changes with it. Every album cover gives the window its own mood. Lucent looks at the whole cover and goes with the color there is the most of, so one small patch of another color will not take over.
 
 <p align="center">
 <img src="docs/images/colors-follow-music.gif" alt="The app's colors changing from one album cover to the next" width="640">
@@ -52,9 +52,9 @@ Put a song on and Lucent changes with it. Every album cover gives the window its
 
 <table>
 <tr>
-<td align="center"><img src="docs/images/home.png" alt="A blue album cover gives a blue app" width="285"><br><sub>A blue cover</sub></td>
-<td align="center"><img src="docs/images/home-red.png" alt="A red album cover gives a red app" width="285"><br><sub>A red cover</sub></td>
-<td align="center"><img src="docs/images/home-warm.png" alt="A gold album cover gives a warm app" width="285"><br><sub>A gold cover</sub></td>
+<td align="center"><img src="docs/images/home-hug.png" alt="Home while Gimme A Hug by Drake plays" width="285"><br><sub>Drake, Gimme A Hug</sub></td>
+<td align="center"><img src="docs/images/home-hater.png" alt="Home while Hater by Yeat plays" width="285"><br><sub>Yeat, Hater</sub></td>
+<td align="center"><img src="docs/images/home-fein.png" alt="Home while FE!N by Travis Scott plays" width="285"><br><sub>Travis Scott, FE!N</sub></td>
 </tr>
 </table>
 
@@ -67,9 +67,9 @@ Put a song on and Lucent changes with it. Every album cover gives the window its
 <td align="center"><img src="docs/images/games.png" alt="Your games, found from your launchers" width="285"><br><sub>Your games, found for you</sub></td>
 </tr>
 <tr>
+<td align="center"><img src="docs/images/settings.png" alt="Settings as a grid of categories" width="285"><br><sub>Settings</sub></td>
+<td align="center"><img src="docs/images/about.png" alt="About" width="285"><br><sub>About</sub></td>
 <td align="center"><img src="docs/images/resolution.png" alt="Resolution and refresh rate" width="285"><br><sub>Display</sub></td>
-<td align="center"><img src="docs/images/color.png" alt="Color" width="285"><br><sub>Color</sub></td>
-<td align="center"><img src="docs/images/crosshair.png" alt="Crosshair" width="285"><br><sub>Crosshair</sub></td>
 </tr>
 </table>
 
@@ -89,7 +89,7 @@ Lucent will tell you in About, on Home and in the tray when a newer version is p
 - It will not apply a display mode when it starts. Your settings stay in `%LOCALAPPDATA%\lucent`.
 - Boost closes only what you select, checks each process again first, and never touches games, Vanguard, Windows, security or driver components. A window that stays open may be asking to save, so it is never force-closed.
 - It will not read a game's memory or modules. Process paths use limited query rights only.
-- Lyrics, artist pictures and Discord Rich Presence are off until you switch them on. Lyrics look the song up on lrclib.net, and artist pictures use Deezer's public search.
+- Lyrics and artist pictures are off until you switch them on. Lyrics look the song up on lrclib.net, and artist pictures use Deezer's public search. Discord Rich Presence is on by default (it shows the game you are playing on your Discord profile) and you can turn it off in Settings, Discord RPC.
 
 ## FAQ
 
@@ -106,7 +106,7 @@ Lucent never reads a game's memory or injects into a game, and it never touches 
 No. Setup installs for your user only.
 
 **Does it send my data anywhere?**
-No account and no tracking. The only network use is the update check (it asks GitHub for this repository's latest release, and you can switch it off) and the features you turn on yourself: lyrics (lrclib.net), artist pictures (Deezer) and Discord Rich Presence.
+No account and no tracking. The only network use is the update check (it asks GitHub for this repository's latest release, and you can switch it off) and the features you turn on yourself: lyrics (lrclib.net) and artist pictures (Deezer). Discord Rich Presence talks to your own Discord app on this PC, and Lucent reads Discord's public list of games to find a game's picture.
 
 **Where are my settings, and how do I remove Lucent?**
 Settings live in `%LOCALAPPDATA%\lucent`. Uninstall from Windows Settings → Apps.

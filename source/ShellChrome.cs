@@ -54,10 +54,10 @@ namespace Lucent
             {
                 var group=(TransformGroup)settingsCard.RenderTransform;
                 var scale=(ScaleTransform)group.Children[0];var lift=(TranslateTransform)group.Children[1];
-                // Opening springs up from below like an iOS sheet and settles with the faintest overshoot; closing just eases back down.
+                // The window grows out of the settings gear and shrinks back into it (its origin is aimed at the gear before each motion).
                 double eased=settingsOpen?SpringOut(p):p;
-                scale.ScaleX=scale.ScaleY=.90+.10*eased;
-                lift.Y=(1-eased)*26;
+                scale.ScaleX=scale.ScaleY=Math.Max(.05,.05+.95*eased);
+                lift.Y=0;
             }
         }
         readonly Dictionary<string,SectionPanel> settingsSections=new Dictionary<string,SectionPanel>();
@@ -83,32 +83,56 @@ namespace Lucent
         }
         void BuildModernNav()
         {
-            var dock=new DockPanel {LastChildFill=true,Margin=new Thickness(6,11,6,7)};
-            var logo=new Border {Height=48,Margin=new Thickness(0,0,0,6),Child=Art.Logo(38)};
-            logo.ToolTip="Lucent";DockPanel.SetDock(logo,Dock.Top);dock.Children.Add(logo);
-            var bottom=new StackPanel();
-            settingsRailButton=ModernNavButton("Settings");bottom.Children.Add(settingsRailButton);
-            var rail=new Border {Background=sidebarSurface,CornerRadius=new CornerRadius(16),Padding=new Thickness(0,10,0,8)};
-            var items=new StackPanel();
+            // The pages are a slim strip of tabs along the top: the logo, one tab per page, and the settings gear at the end.
+            var items=new StackPanel {Orientation=Orientation.Horizontal};
+            var logo=new Border {Width=34,Height=28,Margin=new Thickness(2,0,4,0),Background=Brushes.Transparent,Cursor=Cursors.Hand,Child=Art.Logo(22),ToolTip="Lucent"};
+            logo.MouseLeftButtonUp+=(s,e)=>ShowPage("Home");
+            items.Children.Add(logo);
             foreach(string name in new[]{"Home","Video","Resolution","Profiles","Crosshair","Game Boost","Visual tools"})items.Children.Add(ModernNavButton(name));
-            var railLayout=new DockPanel();
-            DockPanel.SetDock(bottom,Dock.Bottom);
-            railLayout.Children.Add(bottom);
-            railLayout.Children.Add(items);
-            rail.Child=railLayout;dock.Children.Add(rail);workspace.Children.Add(dock);
+            items.Children.Add(new Border {Width=1,Height=16,Background=new SolidColorBrush(Color.FromArgb(60,255,255,255)),Margin=new Thickness(5,0,5,0),IsHitTestVisible=false});
+            settingsRailButton=ModernNavButton("Settings");
+            items.Children.Add(settingsRailButton);
+            tabStrip=new Border {Background=new SolidColorBrush(Color.FromArgb(178,16,16,18)),CornerRadius=new CornerRadius(12),Padding=new Thickness(3,3,4,3),Height=34,VerticalAlignment=VerticalAlignment.Top,HorizontalAlignment=HorizontalAlignment.Left,Child=items};
         }
+        Border tabStrip;
+        readonly List<TextBlock> tabLabels=new List<TextBlock>();
+        // A tab: the page's icon and name (the settings gear is just the icon). The page in view is lit.
         Button ModernNavButton(string title)
         {
-            var icon=Design.RailIcon(title,title=="Settings"?23:22);icon.Opacity=.57;
-            var button=new Button {Content=icon,Tag=title,Style=(Style)Resources["RailAction"],Margin=new Thickness(0,1,0,1),ToolTip=null};
-            button.ToolTip=RailTooltip(TabTitle(title),button);
-            ToolTipService.SetInitialShowDelay(button,500);
-            ToolTipService.SetBetweenShowDelay(button,500);
+            bool gear=title=="Settings";
+            var icon=Design.RailIcon(title,gear?18:16);
+            UIElement content=icon;
+            if(!gear)
+            {
+                icon.Margin=new Thickness(0,0,7,0);
+                var label=new TextBlock {Text=TabTitle(title),FontSize=12.5,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center};
+                tabLabels.Add(label);
+                var row=new StackPanel {Orientation=Orientation.Horizontal};
+                row.Children.Add(icon);row.Children.Add(label);
+                content=row;
+            }
+            content.Opacity=.62;
+            var button=new Button {Content=content,Tag=title,Style=(Style)Resources["TabAction"],Margin=new Thickness(1,0,1,0),ToolTip=null};
+            if(gear){button.Padding=new Thickness(8,0,8,0);button.ToolTip=RailTooltip(TabTitle(title),button,false,null,0,false);}
             System.Windows.Automation.AutomationProperties.SetName(button,TabTitle(title));
-            button.MouseEnter+=(s,e)=>Design.Animate(icon,OpacityProperty,icon.Opacity,1,90);
-            button.MouseLeave+=(s,e)=>Design.Animate(icon,OpacityProperty,icon.Opacity,(string)button.Tag==page||title=="Settings"&&settingsOpen?1:.57,180);
+            button.MouseEnter+=(s,e)=>Design.Animate(content,OpacityProperty,content.Opacity,1,90);
+            button.MouseLeave+=(s,e)=>Design.Animate(content,OpacityProperty,content.Opacity,(string)button.Tag==page||title=="Settings"&&settingsOpen?1:.62,180);
             button.Click+=(s,e)=>{if(title=="Music")MediaPopup();else ShowPage(title);};
             navigationButtons.Add(button);return button;
+        }
+        // Narrow windows show only the icons, so the tabs never run into the window buttons.
+        void FitTabs(double available)
+        {
+            if(tabStrip==null||tabLabels.Count==0)return;
+            foreach(var label in tabLabels)label.Visibility=Visibility.Visible;
+            foreach(var label in tabLabels)((StackPanel)label.Parent).Children[0].SetValue(MarginProperty,new Thickness(0,0,7,0));
+            tabStrip.Measure(new Size(double.PositiveInfinity,double.PositiveInfinity));
+            bool compact=tabStrip.DesiredSize.Width>available;
+            foreach(var label in tabLabels)
+            {
+                label.Visibility=compact?Visibility.Collapsed:Visibility.Visible;
+                ((StackPanel)label.Parent).Children[0].SetValue(MarginProperty,new Thickness(compact?0:0,0,compact?0:7,0));
+            }
         }
         ToolTip RailTooltip(string title,Button target,bool mirrored=false,Brush surface=null,double clearance=0,bool above=false)
         {
@@ -133,16 +157,19 @@ namespace Lucent
             foreach(var button in navigationButtons)
             {
                 bool active=(string)button.Tag==page||((string)button.Tag=="Settings"&&settingsOpen);
-                button.Background=Brushes.Transparent;
-                var icon=button.Content as UIElement;if(icon!=null){icon.BeginAnimation(OpacityProperty,null);icon.Opacity=active?1:.57;}
+                button.Background=active&&(string)button.Tag!="Settings"?new SolidColorBrush(Color.FromArgb(40,255,255,255)):(Brush)Brushes.Transparent;
+                var icon=button.Content as UIElement;if(icon!=null){icon.BeginAnimation(OpacityProperty,null);icon.Opacity=active?1:.62;}
             }
         }
         void BuildModernBody()
         {
-            var body=new DockPanel {Margin=new Thickness(10,8,16,14)};Grid.SetColumn(body,1);workspace.Children.Add(body);
+            var body=new DockPanel {Margin=new Thickness(16,8,16,14)};Grid.SetColumn(body,1);workspace.Children.Add(body);
             var top=new DockPanel {Height=42,LastChildFill=true,Margin=new Thickness(0,0,0,4)};
             DockPanel.SetDock(top,Dock.Top);
             body.Children.Add(top);
+            // The tab strip sits on the left of the top row; the window buttons sit on the right.
+            DockPanel.SetDock(tabStrip,Dock.Left);top.Children.Add(tabStrip);
+            top.SizeChanged+=(s,e)=>FitTabs(Math.Max(120,e.NewSize.Width-150));
             var group=new StackPanel {Orientation=Orientation.Horizontal};
             var chrome=new Border {Background=new SolidColorBrush(Color.FromArgb(178,16,16,18)),CornerRadius=new CornerRadius(11),Padding=new Thickness(4,2,4,2),Child=group,Height=34,VerticalAlignment=VerticalAlignment.Top};
             DockPanel.SetDock(chrome,Dock.Right);top.Children.Add(chrome);
@@ -160,7 +187,7 @@ namespace Lucent
             drag.MouseWheel+=(s,e)=>{if(contentScroll!=null&&!settingsOpen&&!bigPlayerOpen){contentScroll.ScrollToVerticalOffset(contentScroll.VerticalOffset-e.Delta);e.Handled=true;}};
             status.Foreground=Muted;status.FontSize=11;status.TextWrapping=TextWrapping.Wrap;
             // The player buttons are one pill that never moves. Its background fades once the bar is up, because the bar is behind them then.
-            playerDock=new Border {Height=34,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,16+PlayerBar.BarRight,24),Visibility=Visibility.Collapsed,RenderTransform=new TranslateTransform()};
+            playerDock=new Border {Height=34,HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,16+PlayerBar.BarRight,24+PlayerBar.BarBottom+7),Visibility=Visibility.Collapsed,RenderTransform=new TranslateTransform()};
             Panel.SetZIndex(playerDock,9);
             Design.SetStill(playerDock,true);
             root.Children.Add(playerDock);
@@ -645,8 +672,6 @@ namespace Lucent
             shade.MouseLeftButtonDown+=(s,e)=>SetSettingsOpen(false);
             settingsLayer.Children.Add(shade);
             var layout=new Grid();
-            layout.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(218)});
-            layout.ColumnDefinitions.Add(new ColumnDefinition());
             var menu=new DockPanel {Background=Brushes.Black,Margin=new Thickness(0),LastChildFill=true};
             var brand=new StackPanel {Orientation=Orientation.Horizontal,Margin=new Thickness(18,14,18,14)};
             brand.Children.Add(Art.Logo(23));
@@ -659,11 +684,9 @@ namespace Lucent
             searchBox.Children.Add(search);
             var placeholder=new TextBlock {Text="Search settings…",Foreground=Muted,FontSize=13,Margin=new Thickness(25,22,0,0),IsHitTestVisible=false};
             searchBox.Children.Add(placeholder);
-            DockPanel.SetDock(searchBox,Dock.Top);
-            menu.Children.Add(searchBox);
             var categories=new StackPanel();
             categories.Children.Add(new TextBlock {Text="Interface",Foreground=Muted,FontSize=12,Margin=new Thickness(9,0,0,9),FontWeight=FontWeights.SemiBold});
-            foreach(string name in new[]{"Appearance","Backgrounds","Mini Player","Discord RPC","Shortcuts","General","About","Stats"})
+            foreach(string name in new[]{"General","Appearance","Shortcuts","Backgrounds","Mini Player","Discord RPC","Stats","About"})
             {
                 if(name=="Discord RPC")categories.Children.Add(new TextBlock{Text="Integrations",Foreground=Muted,FontSize=12,FontWeight=FontWeights.SemiBold,Margin=new Thickness(9,24,0,9)});
                 if(name=="Shortcuts")categories.Children.Add(new TextBlock{Text="Application",Foreground=Muted,FontSize=12,FontWeight=FontWeights.SemiBold,Margin=new Thickness(9,24,0,9)});
@@ -680,7 +703,6 @@ namespace Lucent
             categoryList.Children.Add(settingsPill);
             categoryList.Children.Add(categories);
             menu.Children.Add(categoryList);
-            layout.Children.Add(menu);
             search.TextChanged+=(s,e)=>
             {
                 placeholder.Visibility=string.IsNullOrWhiteSpace(search.Text)?Visibility.Visible:Visibility.Collapsed;
@@ -690,15 +712,39 @@ namespace Lucent
                     string terms=entry.Key=="Shortcuts"?"Shortcuts keys bind resolution crosshair zoom music next previous":entry.Key=="Appearance"?"Appearance theme colors adaptive background motion":entry.Key=="Mini Player"?"Mini Player media music player position topmost lyrics size center background movement speed hide controls idle window size reset":entry.Key=="Backgrounds"?"Backgrounds gif animated custom picture preview import wallpaper":entry.Key=="Discord RPC"?"Discord RPC Rich Presence status activity playing game with lucent profile ptb canary":entry.Key=="Stats"?"Stats statistics numbers usage time launches zoom resolution games fun":entry.Key=="General"?"General startup Windows tray audio sound volume footsteps limit import":"About lucent version";
                     bool show=query.Length==0||terms.IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0;
                     entry.Value.Visibility=show?Visibility.Visible:Visibility.Collapsed;
+                    if(settingsCards.ContainsKey(entry.Key))settingsCards[entry.Key].Visibility=entry.Value.Visibility;
                     if(show&&first==null)first=entry.Key;
                 }
-                if(first!=null&&settingsCategoryButtons[settingsCategory].Visibility==Visibility.Collapsed)SelectSettingsCategory(first);
+                // Searching shows the cards that match.
+                if(query.Length>0&&!settingsOverviewShown)ShowSettingsOverview();
+            };
+            // The overview: the search box, then one card per category.
+            settingsOverview=new StackPanel();
+            searchBox.Margin=new Thickness(0,0,0,16);
+            search.Margin=new Thickness(0);placeholder.Margin=new Thickness(13,10,0,0);
+            settingsOverview.Children.Add(searchBox);
+            var cardGrid=new WrapPanel();
+            foreach(var entry in settingsCategoryButtons)
+            {
+                var card=SettingsCategoryCard(entry.Key);
+                settingsCards[entry.Key]=card;cardGrid.Children.Add(card);
+            }
+            settingsOverview.Children.Add(cardGrid);
+            settingsOverview.SizeChanged+=(s,e)=>
+            {
+                // Two or three cards across, whatever the width of the window.
+                int across=e.NewSize.Width>640?3:e.NewSize.Width>400?2:1;
+                double width=Math.Max(150,Math.Floor((e.NewSize.Width-across*12)/across));
+                foreach(FrameworkElement child in cardGrid.Children)child.Width=width;
             };
             var right=new DockPanel {Background=new SolidColorBrush(Color.FromRgb(19,19,20)),Margin=new Thickness(0),LastChildFill=true};
-            Grid.SetColumn(right,1);
             layout.Children.Add(right);
             var heading=new DockPanel {Margin=new Thickness(22,22,16,18)};DockPanel.SetDock(heading,Dock.Top);right.Children.Add(heading);
             var close=WindowAction("Close",()=>SetSettingsOpen(false));DockPanel.SetDock(close,Dock.Right);heading.Children.Add(close);
+            // In a category, a button takes you back to the grid of categories.
+            settingsBack=Action("‹  All settings",ShowSettingsOverview);
+            settingsBack.Padding=new Thickness(12,6,14,6);settingsBack.MinHeight=0;settingsBack.Margin=new Thickness(0,0,12,0);settingsBack.VerticalAlignment=VerticalAlignment.Center;settingsBack.Visibility=Visibility.Collapsed;
+            DockPanel.SetDock(settingsBack,Dock.Left);heading.Children.Add(settingsBack);
             var labels=new StackPanel();
             settingsHeading=Text("Appearance",18,true);
             settingsDescription=Text("",13);
@@ -729,9 +775,18 @@ namespace Lucent
             windowSurface.Children.Add(settingsBackdropLayer);
             Panel.SetZIndex(settingsLayer,20);
             windowSurface.Children.Add(settingsLayer);
-            SelectSettingsCategory("Appearance");
+            ShowSettingsOverview();
             SizeSettingsPanel();
             ApplySettingsMotion(0);
+        }
+        // Aims the growing motion of the settings window at the settings gear, so it looks as if it comes from there.
+        void AimSettingsOrigin()
+        {
+            var gear=settingsRailButton;
+            if(settingsCard==null||gear==null||!gear.IsLoaded||settingsCard.Width<=0||settingsCard.Height<=0)return;
+            var middle=gear.TranslatePoint(new Point(gear.ActualWidth/2,gear.ActualHeight/2),windowSurface);
+            var corner=VisualTreeHelper.GetOffset(settingsCard);
+            settingsCard.RenderTransformOrigin=new Point((middle.X-corner.X)/settingsCard.Width,(middle.Y-corner.Y)/settingsCard.Height);
         }
         void SizeSettingsPanel()
         {
@@ -752,11 +807,58 @@ namespace Lucent
             if(Math.Abs(margin.Left-position.X)<.01&&Math.Abs(margin.Top-position.Y)<.01)return;
             settingsOverlayGear.Margin=new Thickness(position.X,position.Y,0,0);
         }
-        void SelectSettingsCategory(string name)
+        readonly Dictionary<string,Border> settingsCards=new Dictionary<string,Border>();
+        StackPanel settingsOverview;
+        Button settingsBack;
+        bool settingsOverviewShown;
+        // What each category is for, in a line.
+        static string SettingsBlurb(string name)
+        {
+            return name=="Appearance"?"The way lucent looks and behaves.":name=="Shortcuts"?"Customize global shortcuts. Press Esc while binding to clear a key.":name=="Mini Player"?"The floating mini player: where it opens, how it looks and when its controls hide.":name=="Backgrounds"?"Add your own GIF, preview it, then use it across Lucent.":name=="Stats"?"A few friendly numbers about how you use Lucent.":name=="Discord RPC"?"Show on Discord the game you are playing with Lucent.":name=="General"?"How lucent behaves on your computer.":"A lightweight display and game utility for Windows.";
+        }
+        // Settings opens as a grid of categories; a category opens on its own page, with a button back to the grid.
+        void ShowSettingsOverview()
+        {
+            if(settingsOverview==null)return;
+            if(settingsOverviewShown&&settingsContent.Content==settingsOverview)return;
+            bool switching=settingsContent.Content!=null&&IsLoaded;
+            var current=settingsContent.Content as UIElement;
+            var oldParent=current==null?null:VisualTreeHelper.GetParent(current) as ContentControl;
+            settingsContent.Content=null;
+            settingsContent.Content=settingsOverview;
+            settingsOverviewShown=true;
+            settingsBack.Visibility=Visibility.Collapsed;
+            settingsHeading.Text="Settings";
+            settingsDescription.Text="Pick a category.";
+            if(switching)
+            {
+                var rise=(TranslateTransform)settingsContent.RenderTransform;
+                Design.Animate(settingsContent,OpacityProperty,0,1,220);
+                rise.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(10,0,TimeSpan.FromMilliseconds(260)){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
+            }
+            if(settingsScroll!=null)settingsScroll.ScrollToVerticalOffset(0);
+        }
+        // One category as a card: its icon, its name and a line about it.
+        Border SettingsCategoryCard(string name)
+        {
+            var icon=Design.SettingsIcon(name,22);
+            icon.HorizontalAlignment=HorizontalAlignment.Center;icon.VerticalAlignment=VerticalAlignment.Center;
+            var tile=new Border {Width=44,Height=44,CornerRadius=new CornerRadius(13),Background=new SolidColorBrush(Color.FromArgb(26,255,255,255)),Margin=new Thickness(0,0,14,0),VerticalAlignment=VerticalAlignment.Top,Child=icon};
+            var copy=new StackPanel {VerticalAlignment=VerticalAlignment.Center};
+            copy.Children.Add(new TextBlock {Text=name,FontSize=15,FontWeight=FontWeights.Bold});
+            copy.Children.Add(new TextBlock {Text=SettingsBlurb(name),FontSize=12,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,3,0,0)});
+            var row=new DockPanel();
+            DockPanel.SetDock(tile,Dock.Left);row.Children.Add(tile);row.Children.Add(copy);
+            var button=new Button {Content=row,Style=(Style)Resources["SettingsRow"],Padding=new Thickness(16,14,16,14),HorizontalContentAlignment=HorizontalAlignment.Stretch,VerticalContentAlignment=VerticalAlignment.Top,MinHeight=96};
+            System.Windows.Automation.AutomationProperties.SetName(button,name);
+            string category=name;
+            button.Click+=(s,e)=>SelectSettingsCategory(category);
+            return new Border {Child=button,Background=settingsGroupSurface,CornerRadius=new CornerRadius(16),Margin=new Thickness(0,0,12,12),ClipToBounds=true};
+        }        void SelectSettingsCategory(string name)
         {
             if(!settingsSections.ContainsKey(name))return;
-            if(name==settingsCategory&&settingsContent.Content!=null)return;
-            settingsCategory=name;
+            if(name==settingsCategory&&settingsContent.Content!=null&&!settingsOverviewShown)return;
+            settingsCategory=name;settingsOverviewShown=false;settingsBack.Visibility=Visibility.Visible;
             var section=settingsSections[name];var panel=section.Content;
             var oldParent=panel.Parent as Border;if(oldParent!=null)oldParent.Child=null;
             bool switching=settingsContent.Content!=null&&IsLoaded;
@@ -770,7 +872,7 @@ namespace Lucent
                 rise.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(10,0,TimeSpan.FromMilliseconds(260)){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
             }
             settingsHeading.Text=name;
-            settingsDescription.Text=name=="Appearance"?"The way lucent looks and behaves.":name=="Shortcuts"?"Customize global shortcuts. Press Esc while binding to clear a key.":name=="Mini Player"?"The floating mini player: where it opens, how it looks and when its controls hide.":name=="Backgrounds"?"Add your own GIF, preview it, then use it across Lucent.":name=="Stats"?"A few friendly numbers about how you use Lucent.":name=="Discord RPC"?"Show on Discord the game you are playing with Lucent.":name=="General"?"How lucent behaves on your computer.":"A lightweight display and game utility for Windows.";
+            settingsDescription.Text=SettingsBlurb(name);
             if(panel.Children.Count>0&&panel.Children[0] is TextBlock)panel.Children[0].Visibility=Visibility.Collapsed;
             foreach(var item in settingsCategoryButtons)SetCategoryInk(item.Value,item.Key==name||item.Value.IsMouseOver);
             MoveSettingsPill(true);
@@ -859,9 +961,12 @@ namespace Lucent
         {
             if(settingsLayer==null||settingsOpen==open)return;
             settingsOpen=open;int transition=++settingsTransition;HideStatus();UpdateRailSelection();UpdateAmbientColor();
+            if(!open)AimSettingsOrigin();
             if(open)
             {
                 EndBackgroundPreview();
+                // Settings always opens on the grid of categories (a caller that wants one category selects it right after).
+                ShowSettingsOverview();
                 SizeSettingsPanel();
                 animatedBackground.SetPlaying(false);
                 PositionSettingsGear();
@@ -871,6 +976,7 @@ namespace Lucent
                 settingsBackdropLayer.Visibility=Visibility.Visible;
                 settingsLayer.Visibility=Visibility.Visible;
                 settingsLayer.UpdateLayout();
+                AimSettingsOrigin();
                 settingsCard.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
             }
             foreach(var gear in new[]{settingsRailButton,settingsOverlayGear})Design.Animate((UIElement)gear.Content,OpacityProperty,open?.57:1,open?1:.57,180);

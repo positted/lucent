@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using Lucent;
@@ -192,6 +192,7 @@ internal static class LogicTests
         Check(LegacyNames.SingleInstanceMutex.StartsWith("Local\\")&&LegacyNames.DataFolder.Length>0,"The names shared with installed versions are missing");
         DiscordChecks();
         LauncherChecks();
+        HomeLayoutChecks();
         VisionChecks();
         Console.WriteLine("PASS: neutral/legacy-range/red-only/dim matrices, black-body red filter, crosshair rendering/styles/codes/migration, finite high-strength matrix, distinct icons, independent profile snapshots, atomic persistence and backup, system/Vanguard/game/lucent process protections and verified publisher checks, lazy effects lifecycle. No live color/audio/display writes were invoked.");
         string fixtureFolder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"test-data","ram-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(fixtureFolder);
@@ -211,6 +212,19 @@ internal static class LogicTests
         var head=new byte[8];int got=0;while(got<8){int n=s.Read(head,got,8-got);if(n<=0)throw new System.IO.EndOfStreamException();got+=n;}
         kind=BitConverter.ToInt32(head,0);var body=new byte[BitConverter.ToInt32(head,4)];got=0;while(got<body.Length){int n=s.Read(body,got,body.Length-got);if(n<=0)throw new System.IO.EndOfStreamException();got+=n;}
         return body;
+    }
+    // ---- Home layout: the standard layout, and a damaged or partial saved layout can never lose or double a card.
+    static void HomeLayoutChecks()
+    {
+        var standard=HomeLayoutText.Parse("");
+        Check(string.Join(",",standard.Select(e=>e.Key))=="display,playing,pc,shortcuts"&&standard.All(e=>!e.Full&&!e.Hidden),"The standard Home layout is wrong");
+        var mine=HomeLayoutText.Parse("!pc:f;actions:h;shortcuts:h;display:f");
+        Check(string.Join(",",mine.Select(e=>e.Key))=="pc,shortcuts,display,playing"&&mine[0].Hidden&&mine[0].Full&&!mine[1].Full&&mine[2].Full&&!mine[3].Hidden,"A saved Home layout was not read back in order: "+HomeLayoutText.Serialize(mine));
+        Check(HomeLayoutText.Parse("pc:h;pc:f;nonsense:h;;;:x;display").Count==4&&HomeLayoutText.Parse("pc:h;pc:f;nonsense:h").Count(e=>e.Key=="pc")==1,"A damaged Home layout lost or doubled a card");
+        Check(HomeLayoutText.Clean(HomeLayoutText.Serialize(mine))==HomeLayoutText.Serialize(mine)&&HomeLayoutText.Clean(null)==HomeLayoutText.Clean(""),"Cleaning a Home layout is not stable");
+        var prefs=new Preferences{HomeLayout="garbage;;"};StateStore.Normalize(prefs);
+        Check(prefs.HomeLayout==HomeLayoutText.Clean(""),"A broken Home layout was not put right when settings were read");
+        Console.WriteLine("PASS: Home layout: standard order and widths, a saved order with hidden and full-width cards read back, damaged text cannot lose or double a card, and settings reading puts it right.");
     }
     // ---- Games from the other launchers: the records they leave behind are read correctly, and only safe launch addresses are ever opened.
     static void LauncherChecks()
@@ -339,7 +353,7 @@ internal static class LogicTests
         alone.Dispose();
         var unset=new DiscordRpcClient{ClientId=""};unset.Start();
         Check(unset.Status=="Needs setup","Without a Discord application the client should say it is not set up");
-        Check(!new Preferences().DiscordOn&&new Preferences().DiscordTimeline&&new Preferences().DiscordButton,"Discord must be off by default");
+        Check(new Preferences().DiscordOn&&new Preferences().DiscordTimeline&&new Preferences().DiscordButton,"Discord Rich Presence must be on by default");var oldPrefs=new Preferences{DiscordOn=false};StateStore.Normalize(oldPrefs);Check(oldPrefs.DiscordOn&&oldPrefs.DiscordSettingVersion==1,"Settings saved before the default changed must be turned on once");oldPrefs.DiscordOn=false;StateStore.Normalize(oldPrefs);Check(!oldPrefs.DiscordOn,"After that, switching it off must be respected");
         Console.WriteLine("PASS: Discord status built for a running game (and nothing when none runs), game pictures found from Discord's list, and the client said hello, sent, cleared and stopped against a made-up Discord. The real Discord was not touched.");
     }
     // ---- Color blindness modes: against a simulation of each deficiency (Machado 2009), the filter must make colors that look alike to that viewer clearly different.

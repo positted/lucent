@@ -44,14 +44,14 @@ class ModernUiTests
   {
    var face=new Typeface(Design.Font,FontStyles.Normal,FontWeights.Normal,FontStretches.Normal);GlyphTypeface glyph;Check(face.TryGetGlyphTypeface(out glyph)&&glyph.FamilyNames.Values.Any(n=>n.Contains("Inter")),"Inter was not resolved from bundled fonts");
    var pages=(IDictionary)Field(shell,"pages");var content=(ContentControl)Field(shell,"content");
-   Check(((Grid)Field(shell,"workspace")).ColumnDefinitions[0].Width.Value==70,"Sidebar width");
+   Check(((Grid)Field(shell,"workspace")).ColumnDefinitions[0].Width.Value==0,"The page tabs run along the top, so there is no sidebar column");
    Check((string)Field(shell,"page")=="Home","Lucent should open on the Home page");
    Check(shell.Title=="Lucent"&&TextOptions.GetTextFormattingMode(shell)==TextFormattingMode.Ideal&&TextOptions.GetTextHintingMode(shell)==TextHintingMode.Auto,"Brand or unsnapped typography");
    shell.WindowState=WindowState.Minimized;await Task.Delay(60);Check(shell.IsVisible&&shell.ShowInTaskbar,"Default minimize hid the taskbar window");shell.WindowState=WindowState.Normal;
    foreach(Button rail in (IEnumerable)Field(shell,"navigationButtons"))
    {
-    Check(((SolidColorBrush)rail.Background).Color.A==0,"Rail has a gray selection background");Check(ToolTipService.GetInitialShowDelay(rail)==500,"Tooltip delay");
-    var tip=(ToolTip)rail.ToolTip;var placement=tip.CustomPopupPlacementCallback(new Size(80,30),new Size(48,44),new Point());Check(placement[0].Point.Y==7,"Tooltip is not centered on icon");
+    Check(((SolidColorBrush)rail.Background).Color.A<=40,"A tab has a heavy selection background");
+    
    }
    Call(shell,"ShowPage","Profiles");Func<object> shownPage=()=>((ContentControl)Field(shell,"content")).Content;object original=shownPage();
    Call(shell,"ShowPage","Settings");await Task.Delay(420);Check(shell.SettingsOpen&&ReferenceEquals(original,shownPage()),"Opening settings changed page");
@@ -87,7 +87,7 @@ class ModernUiTests
    await CheckScrolling(shell,pages);
    var dockTipButton=(Button)Field(shell,"playerDockButton");var dockTip=(ToolTip)dockTipButton.ToolTip;Check(ToolTipService.GetInitialShowDelay(dockTipButton)==500&&ToolTipService.GetBetweenShowDelay(dockTipButton)==500,"Player tooltip delay");
    var dockPlacement=dockTip.CustomPopupPlacementCallback(new Size(80,30),new Size(32,28),new Point());Check(dockPlacement[0].Point.X==-24&&dockPlacement[0].Point.Y==-38,"The title of a player icon should be centered above it: "+dockPlacement[0].Point);
-   var railTip=(ToolTip)((IEnumerable)Field(shell,"navigationButtons")).Cast<Button>().First(b=>(string)b.Tag=="Home").ToolTip;Check(dockTip.FontSize==railTip.FontSize&&dockTip.FontWeight==railTip.FontWeight&&ReferenceEquals(dockTip.Background,railTip.Background)&&dockTip.Style==railTip.Style,"Player tooltip style differs from the rail");
+   var railTip=(ToolTip)((IEnumerable)Field(shell,"navigationButtons")).Cast<Button>().First(b=>(string)b.Tag=="Settings").ToolTip;Check(dockTip.FontSize==railTip.FontSize&&dockTip.FontWeight==railTip.FontWeight&&ReferenceEquals(dockTip.Background,railTip.Background)&&dockTip.Style==railTip.Style,"Player tooltip style differs from the rail");
    Check(((SolidColorBrush)((ToolTip)modalGear.ToolTip).Background).Color==Color.FromRgb(24,24,26),"Settings gear tooltip inherited adaptive color");
    CheckMediaClock();CheckBackdrop();CheckSmoothText(shell);await CheckButtonMotion(shell,pages);
    Shell.ActivationSignal="Local\\Lucent.Test."+Guid.NewGuid().ToString("N");Check(!Shell.SignalRunningInstance(),"Signal found with nothing listening");Call(shell,"ListenForActivation");shell.WindowState=WindowState.Minimized;await Task.Delay(50);Check(Shell.SignalRunningInstance(),"Second launch could not reach the running app");for(int i=0;i<100&&shell.WindowState!=WindowState.Normal;i++)await Task.Delay(10);Check(shell.WindowState==WindowState.Normal,"Second launch did not bring the app forward");
@@ -284,7 +284,7 @@ class ModernUiTests
  {
   // The sidebar, the tooltips and the page headers all use the new names; the page keys behind them stay put.
   var expected=new System.Collections.Generic.Dictionary<string,string>{{"Home","Home"},{"Video","Color"},{"Resolution","Display"},{"Profiles","Profiles"},{"Crosshair","Crosshair"},{"Game Boost","Boost"},{"Visual tools","Vision"},{"Settings","Settings"}};
-  foreach(Button rail in (IEnumerable)Field(shell,"navigationButtons")){var key=(string)rail.Tag;Check((string)((ToolTip)rail.ToolTip).Content==expected[key]&&System.Windows.Automation.AutomationProperties.GetName(rail)==expected[key],"Tab name for "+key);}
+  foreach(Button rail in (IEnumerable)Field(shell,"navigationButtons")){var key=(string)rail.Tag;if(key=="Settings")continue;Check(System.Windows.Automation.AutomationProperties.GetName(rail)==expected[key]&&Visuals<SmoothText>(rail).Any(l=>l.Text==expected[key]),"Tab name for "+key);}
   var aspect=typeof(Shell).GetMethod("AspectName",BindingFlags.Static|BindingFlags.NonPublic);Func<int,int,string> name=(w,h)=>(string)aspect.Invoke(null,new object[]{w,h});
   Check(name(1920,1080)=="16:9"&&name(1366,768)=="16:9"&&name(1680,1050)=="16:10"&&name(1280,1024)=="5:4"&&name(1024,768)=="4:3"&&name(2560,1080)=="21:9"&&name(1600,1024)=="Other","Aspect names");
   foreach(string key in new[]{"Home","Video","Resolution","Profiles","Crosshair","Game Boost","Visual tools"}){Call(shell,"ShowPage",key);Check(Visuals<SmoothText>((DependencyObject)Field(shell,"content")).Any(t=>t.Text==expected[key]&&t.FontSize>=30),"The "+key+" page does not carry its new name");}
@@ -402,11 +402,11 @@ class ModernUiTests
   Call(shell,"LoadLook",prefs.Desktop,"Desktop");prefs.Profiles.Clear();Call(shell,"ShowPage","Profiles");Call(shell,"RefreshProfiles");shell.UpdateLayout();var page=(DependencyObject)Field(shell,"content");
   Func<string[]> words=()=>Visuals<SmoothText>(page).Select(t=>t.Text).ToArray();
   Func<string,Button> named=n=>Visuals<Button>(page).First(b=>Equals(b.Content,n)||System.Windows.Automation.AutomationProperties.GetName(b)==n);
-  foreach(string expected in new[]{"Switch automatically","Your looks","Desktop","In use"})Check(words().Contains(expected),"Profiles is missing "+expected);
-  Check(words().Any(w=>w.StartsWith("No games yet"))&&Visuals<Button>(page).Any(b=>Equals(b.Content,"+   Add another game")),"The empty state does not explain how to start");
+  foreach(string expected in new[]{"Switch automatically","Your profiles","Desktop","In use"})Check(words().Contains(expected),"Profiles is missing "+expected);
+  Check(words().Any(w=>w.StartsWith("No profiles yet"))&&Visuals<Button>(page).Any(b=>Equals(b.Content,"+   Add another game")),"The empty state does not explain how to start");
   Check(!words().Contains("Load look")&&!words().Contains("Save current look")&&!words().Contains("Use desktop"),"The old confusing buttons are still there");
   var game=new GameProfile{Name="Test game",Executable=@"C:\Games\Test\game.exe",Look=new Look{Saturation=130}};prefs.Profiles.Add(game);Call(shell,"RefreshProfiles");shell.UpdateLayout();
-  Check(words().Contains("Test game")&&words().Contains("game.exe")&&!words().Any(w=>w.StartsWith("No games yet")),"A game did not appear as a row");
+  Check(words().Contains("Test game")&&words().Contains("game.exe")&&!words().Any(w=>w.StartsWith("No profiles yet")),"A game did not appear as a row");
   Check(Visuals<Button>(page).Count(b=>Equals(b.Content,"Use"))==1&&Visuals<Button>(page).Any(b=>Equals(b.Content,"Update look")),"A game row should offer Use and Update look");
   // Using a look marks it as in use, and the desktop row offers a way back.
   named("Use").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));shell.UpdateLayout();
@@ -435,7 +435,7 @@ class ModernUiTests
   libraryTile.RaiseEvent(pointer(Mouse.MouseEnterEvent));await Until(()=>tileWash.Opacity>.99);Check(tileWash.Opacity>.99&&tilePlay.Template.FindName("Glow",tilePlay)!=null,"Hovering a tile should light the whole tile");
   tilePlay.RaiseEvent(pointer(Mouse.MouseEnterEvent));await Until(()=>tileWash.Opacity<.01);Check(tileWash.Opacity<.01,"Hovering Play should leave only Play glowing: "+tileWash.Opacity);
   tilePlay.RaiseEvent(pointer(Mouse.MouseLeaveEvent));libraryTile.RaiseEvent(pointer(Mouse.MouseLeaveEvent));await Until(()=>tileWash.Opacity<.01);
-  Check(words().Contains("What a game profile does")&&words().Any(w=>w.StartsWith("A game profile is a saved look"))&&words().Any(w=>w.Contains("Dark Boost")&&w.Contains("sound radar")),"The page does not explain what a game profile does");
+  Check(words().Contains("What a profile saves")&&words().Any(w=>w.StartsWith("A profile is a saved set of settings"))&&words().Any(w=>w.Contains("Dark Boost")&&w.Contains("sound radar"))&&words().Contains("Save your settings"),"The page does not explain what a profile saves");
   // Play starts the game the way its launcher would, from the tile and from the game's row, and never from anything but a store address or the program file.
   named("Play Library Game").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check((string)Field(shell,"lastLaunch")=="steam://rungameid/12345","Play on the tile did not start the game through Steam: "+Field(shell,"lastLaunch"));
   typeof(Shell).GetField("lastLaunch",BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public).SetValue(shell,null);
@@ -567,7 +567,7 @@ class ModernUiTests
   Call(shell,"HideUpdatePopup");Call(shell,"SelectSettingsCategory","Discord RPC");shell.UpdateLayout();
   var discordTree=(DependencyObject)Field(shell,"settingsContent");
   Check(((System.Collections.IDictionary)Field(shell,"settingsCategoryButtons")).Contains("Discord RPC")&&!((System.Collections.IDictionary)Field(shell,"settingsCategoryButtons")).Contains("Discord"),"The tab should be called Discord RPC");
-  Check(Visuals<SmoothText>(discordTree).Any(w=>w.Text=="Discord not connected")&&Visuals<SmoothText>(discordTree).Any(w=>w.Text=="Disabled")&&Visuals<CheckBox>(discordTree).Any(c=>System.Windows.Automation.AutomationProperties.GetName(c)=="Discord Rich Presence"&&c.IsChecked==false),"The Discord RPC page is missing its status or switch");
+  Check(Visuals<SmoothText>(discordTree).Any(w=>w.Text=="Discord not connected")&&Visuals<CheckBox>(discordTree).Any(c=>System.Windows.Automation.AutomationProperties.GetName(c)=="Discord Rich Presence"&&c.IsChecked==true),"The Discord RPC page is missing its status or its switch (Rich Presence is on by default)");
   Check(Visuals<CheckBox>(discordTree).Any(c=>System.Windows.Automation.AutomationProperties.GetName(c)=="Elapsed time"&&c.IsChecked==true)&&Visuals<CheckBox>(discordTree).Any(c=>System.Windows.Automation.AutomationProperties.GetName(c).Contains("Get Lucent")&&c.IsChecked==true)&&!Visuals<CheckBox>(discordTree).Any(c=>System.Windows.Automation.AutomationProperties.GetName(c)=="Playback timeline"||System.Windows.Automation.AutomationProperties.GetName(c)=="Show when paused")&&!Visuals<Button>(discordTree).Any(b=>Equals(b.Tag,"Artist")),"The page should have no music options");
   Check(Visuals<SmoothText>(discordTree).Any(w=>w.Text.Contains("Nothing is shown on Discord unless a game is running")),"The page should explain that only a running game is shown");
   // With a made-up Discord: nothing is shown with no game, and a running game shows as "Playing <game> with Lucent".
@@ -667,9 +667,9 @@ class ModernUiTests
 
   // ---- The player bar and the sidebar end on the same line.
   shell.SetMediaAvailable(true);Call(shell,"SetPlayerBarOpen",true);await Until(()=>((UIElement)Field(shell,"playerBar")).Opacity>.99&&Math.Abs(((TranslateTransform)((UIElement)Field(shell,"playerBar")).RenderTransform).Y)<.01);shell.UpdateLayout();
-  var rail=Visuals<Border>(shell).First(b=>ReferenceEquals(b.Background,Field(shell,"sidebarSurface")));var bar=(FrameworkElement)Field(shell,"playerBar");
+  var rail=(FrameworkElement)Field(shell,"tabStrip");var bar=(FrameworkElement)Field(shell,"playerBar");
   double railBottom=rail.TransformToAncestor(shell).TransformBounds(new Rect(0,0,rail.ActualWidth,rail.ActualHeight)).Bottom,barBottom=bar.TransformToAncestor(shell).TransformBounds(new Rect(0,0,bar.ActualWidth,bar.ActualHeight)).Bottom;
-  Check(Math.Abs(railBottom-barBottom)<=.75,"The player bar and the sidebar are not level: sidebar "+railBottom+", bar "+barBottom);
+  Check(barBottom<=shell.ActualHeight-10&&barBottom>=shell.ActualHeight-24,"The player bar does not sit just above the window edge: bottom "+barBottom+" of "+shell.ActualHeight);
   Call(shell,"SetPlayerBarOpen",false);await Until(()=>((UIElement)Field(shell,"playerBar")).Visibility!=Visibility.Visible||((UIElement)Field(shell,"playerBar")).Opacity<.02);
   // ---- Sharpening belongs to zoom: Color pop and Smart shadows draw at 1x and sharpen nothing; zoom itself sharpens.
   var look=(Look)Field(shell,"current");var keptLook=look.Copy();bool keptRisk=prefs.RiskAccepted;prefs.RiskAccepted=true;
@@ -884,11 +884,11 @@ class ModernUiTests
   // Home is the first tab and what opens by default: the display, a few quick actions, what is playing and the shortcuts.
   var rails=((IEnumerable)Field(shell,"navigationButtons")).Cast<Button>().ToArray();
   var homeRail=rails.First(b=>(string)b.Tag=="Home");var colorRail=rails.First(b=>(string)b.Tag=="Video");
-  Check(System.Windows.Automation.AutomationProperties.GetName(homeRail)=="Home"&&homeRail.TransformToAncestor(shell).Transform(new Point()).Y<colorRail.TransformToAncestor(shell).Transform(new Point()).Y,"Home should be the first tab");
+  Check(System.Windows.Automation.AutomationProperties.GetName(homeRail)=="Home"&&homeRail.TransformToAncestor(shell).Transform(new Point()).X<colorRail.TransformToAncestor(shell).Transform(new Point()).X,"Home should be the first tab");
   Call(shell,"ShowPage","Home");shell.UpdateLayout();var page=(DependencyObject)Field(shell,"content");
   var words=Visuals<SmoothText>(page).Select(t=>t.Text).ToArray();
   Check(words.Any(t=>t=="Home")&&Visuals<SmoothText>(page).Any(t=>t.Text=="Home"&&t.FontSize>=30),"Home page title");
-  foreach(string card in new[]{"Your display","Quick actions","Shortcuts"})Check(words.Contains(card),"Home is missing "+card);
+  foreach(string card in new[]{"Your display","Shortcuts"})Check(words.Contains(card),"Home is missing "+card);
   var info=(DisplayInfo)Field(shell,"selected");var mode=DisplayService.GetCurrentMode(info.DeviceName);
   Check(words.Contains(mode.Width+" \u00D7 "+mode.Height)&&words.Any(w=>w.StartsWith(mode.Frequency+" Hz")),"Home does not show the current display mode");
   typeof(Shell).GetField("ambientTrack",Private).SetValue(shell,null);Call(shell,"UpdateHome");words=Visuals<SmoothText>(page).Select(t=>t.Text).ToArray();Check(!Visuals<SmoothText>(page).First(t=>t.Text=="Now playing").IsVisible,"Home should hide Now playing when nothing is playing");
@@ -899,10 +899,7 @@ class ModernUiTests
   words=Visuals<SmoothText>(page).Select(t=>t.Text).ToArray();
   Check(Visuals<SmoothText>(page).First(t=>t.Text=="Now playing").IsVisible&&words.Contains("Home song")&&words.Contains("Home artist")&&Visuals<Button>(page).Any(b=>Equals(b.Content,"Open player")&&b.IsVisible),"Home does not show what is playing");
   typeof(Shell).GetField("ambientTrack",Private).SetValue(shell,null);Call(shell,"UpdateHome");Check(coverImage.Source==null,"Home kept the cover after the track ended");
-  Func<string,Button> tile=n=>Visuals<Button>(page).First(b=>System.Windows.Automation.AutomationProperties.GetName(b)==n);
-  tile("Boost").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check((string)Field(shell,"page")=="Game Boost","The Boost tile did not open Boost");
-  Call(shell,"ShowPage","Home");tile("Profiles").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check((string)Field(shell,"page")=="Profiles","The Profiles tile did not open Profiles");
-  Call(shell,"ShowPage","Home");tile("Color").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check((string)Field(shell,"page")=="Video","The Color tile did not open Color");
+  Check(!words.Contains("Quick actions")&&!Visuals<Button>(page).Any(b=>System.Windows.Automation.AutomationProperties.GetName(b)=="Boost"),"Home should no longer have Quick actions");
   Call(shell,"ShowPage","Video");
  }
  static async Task CheckTabSpam(Shell shell)
@@ -943,25 +940,23 @@ await Until(()=>((UIElement)Field(shell,"settingsLayer")).Visibility!=Visibility
  }
  static async Task CheckSettingsSidebar(Shell shell)
  {
-  var content=(ContentControl)Field(shell,"settingsContent");
-  Call(shell,"SelectSettingsCategory","Appearance");shell.UpdateLayout();await Task.Delay(320);
-  var buttons=(IDictionary)Field(shell,"settingsCategoryButtons");var pill=(Border)Field(shell,"settingsPill");var slide=(TranslateTransform)pill.RenderTransform;double start=slide.Y;
-  for(int wait=0;wait<60&&Math.Abs(start-VisualTreeHelper.GetOffset((Button)buttons["Appearance"]).Y)>.01;wait++){await Task.Delay(50);start=slide.Y;}
-  Check(Math.Abs(start-VisualTreeHelper.GetOffset((Button)buttons["Appearance"]).Y)<.01,"Highlight is not on the selected row: pill "+start+" button "+VisualTreeHelper.GetOffset((Button)buttons["Appearance"]).Y+" category "+(string)Field(shell,"settingsCategory"));
-  // The highlight glides there, rather than each row lighting up separately.
-  Call(shell,"SelectSettingsCategory","General");double end=VisualTreeHelper.GetOffset((Button)buttons["General"]).Y;bool between=false;
-  for(int i=0;i<40&&Math.Abs(slide.Y-end)>.01;i++){await Task.Delay(10);if(slide.Y>start+.5&&slide.Y<end-.5)between=true;}
-  await Task.Delay(120);Check(between&&Math.Abs(slide.Y-end)<.01,"Highlight did not slide: "+start+" to "+slide.Y+" of "+end);
-  foreach(DictionaryEntry item in buttons)Check(((Button)item.Value).Background==Brushes.Transparent||((SolidColorBrush)((Button)item.Value).Background).Color.A==0,"A settings row paints its own highlight");
-  Check(Math.Abs(((UIElement)((Button)buttons["General"]).Content).Opacity-1)<.01,"Selected row is not bright");await Task.Delay(180);Check(((UIElement)((Button)buttons["About"]).Content).Opacity<.7,"Other rows are not dimmed");
-  var panel=content.Content;Call(shell,"SelectSettingsCategory","General");Check(ReferenceEquals(panel,content.Content)&&Math.Abs(slide.Y-end)<.01,"Reselecting a row changed something");
+  // Settings opens as a grid of category cards; a category opens on its own page with a button back to the grid.
+  var content=(ContentControl)Field(shell,"settingsContent");var buttons=(IDictionary)Field(shell,"settingsCategoryButtons");var cards=(IDictionary)Field(shell,"settingsCards");
+  Call(shell,"SetSettingsOpen",true);await Task.Delay(420);shell.UpdateLayout();
+  Check((bool)Field(shell,"settingsOverviewShown")&&ReferenceEquals(content.Content,Field(shell,"settingsOverview")),"Settings should open on the grid of categories");
+  Check(cards.Count==8&&cards.Count==buttons.Count&&cards.Values.Cast<FrameworkElement>().All(c=>c.IsVisible&&c.ActualWidth>140),"The grid is missing a category card");
+  Check(!((FrameworkElement)Field(shell,"settingsBack")).IsVisible,"The back button should not show on the grid");
+  var appearance=Visuals<Button>(content).First(b=>System.Windows.Automation.AutomationProperties.GetName(b)=="Appearance");appearance.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));shell.UpdateLayout();await Task.Delay(300);
+  Check(!(bool)Field(shell,"settingsOverviewShown")&&(string)Field(shell,"settingsCategory")=="Appearance"&&((FrameworkElement)Field(shell,"settingsBack")).IsVisible,"Clicking a card did not open its category with a back button");
+  var back=(Button)Field(shell,"settingsBack");back.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));shell.UpdateLayout();await Task.Delay(300);
+  Check((bool)Field(shell,"settingsOverviewShown")&&!back.IsVisible,"The back button did not return to the grid");
+  var panel=content.Content;Call(shell,"SelectSettingsCategory","General");Call(shell,"SelectSettingsCategory","General");Check(!ReferenceEquals(panel,content.Content)&&!(bool)Field(shell,"settingsOverviewShown"),"Selecting a category did not leave the grid");
   // About: every button works in test mode without opening anything or touching the clipboard.
   Call(shell,"SelectSettingsCategory","About");shell.UpdateLayout();await Task.Delay(300);
   var about=(DependencyObject)content.Content;var words=Visuals<SmoothText>(about).Select(t=>t.Text).ToArray();Check(words.Contains("v"+Design.Version)&&words.Contains("lucent")&&words.Any(w=>w.StartsWith("Version "+Design.Version)),"About is missing its version");
-  var actions=Visuals<Button>(about).ToArray();Check(actions.Length==6,"About buttons (four of About, then check and get of Updates): "+actions.Length);foreach(var action in actions)action.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(Visuals<SmoothText>(about).Any(t=>t.Text=="Copied"),"Copy did not confirm");
-  Call(shell,"SelectSettingsCategory","Appearance");await Task.Delay(30);
- }
- static async Task CheckPlayerDock(Shell shell)
+  var actions=Visuals<Button>(about).ToArray();Check(actions.Length==9,"About buttons (copy, GitHub, Ko-fi, Report a bug, three folders and files, then check and get of Updates): "+actions.Length);foreach(var action in actions)action.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(Visuals<SmoothText>(about).Any(t=>t.Text=="Copied"),"Copy did not confirm");
+  Call(shell,"SelectSettingsCategory","Appearance");Call(shell,"SetSettingsOpen",false);await Task.Delay(360);
+ } static async Task CheckPlayerDock(Shell shell)
  {
   var dock=(Border)Field(shell,"playerDock");
   // Hidden with no media, animated in when media appears, and it survives the gap between tracks.

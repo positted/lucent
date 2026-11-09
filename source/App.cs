@@ -173,7 +173,8 @@ namespace Lucent
             backgroundPreview=new AnimatedBackground {Visibility=Visibility.Collapsed,Opacity=.55};
 
             Panel.SetZIndex(workspace,3);
-            workspace.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(70)});
+            // The page tabs are a strip along the top now, so there is no sidebar column.
+            workspace.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(0)});
             workspace.ColumnDefinitions.Add(new ColumnDefinition());
             workspace.RenderTransformOrigin=new Point(.07,.96);workspace.RenderTransform=appFold;root.Children.Add(workspace);
             BuildNav();BuildBody();BuildPages();ShowPage("Home");
