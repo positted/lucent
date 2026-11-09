@@ -98,7 +98,7 @@ Lucent will tell you in About, on Home and in the tray when a newer version is p
 ## FAQ
 
 **Why does Windows warn me when I run the setup?**
-Lucent is a small free app made by one person, and it is not code-signed yet (a certificate costs money, and I am looking at free signing for open source). Windows SmartScreen and some antivirus programs are careful with new, unsigned files, so you may see "unknown publisher" or, rarely, a false alarm. The whole source is in this repository. You can read it, or build it yourself with `source/build-local.cmd`. If your antivirus flags it, please [open an issue](https://github.com/positted/lucent/issues) with the version number.
+Lucent is a small free app made by one person, and it is not code-signed yet (a certificate costs money, and I am looking at free signing for open source). Windows SmartScreen and some antivirus programs are careful with new, unsigned files, so you may see "unknown publisher" or, rarely, a false alarm. The whole source is in this repository. You can read it, or build it yourself with `source/build-local.cmd`. Every release will list its SHA-256 checksum and a [VirusTotal](https://www.virustotal.com) scan link, so you can check the file yourself before you run it (you can also drop the setup onto virustotal.com any time). If your antivirus flags it, please [open an issue](https://github.com/positted/lucent/issues) with the version number.
 
 **Is it really free?**
 Yes. No account, no ads, no locked features, MIT license. Ko-fi is optional.
