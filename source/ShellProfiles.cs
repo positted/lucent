@@ -114,7 +114,8 @@ namespace Lucent
             RenderOptions.SetBitmapScalingMode(picture,BitmapScalingMode.HighQuality);
             face.Children.Add(placeholder);
             face.Children.Add(picture);
-            if(!TestMode||ShowGameIcons)GameLibrary.LoadIcon(game.Executable,Dispatcher,source=>{picture.Source=source;placeholder.Visibility=Visibility.Collapsed;});
+            if(game.Picture!=null){picture.Source=game.Picture;placeholder.Visibility=Visibility.Collapsed;}
+            else if(!TestMode||ShowGameIcons)GameLibrary.LoadIcon(game.Executable,Dispatcher,source=>{picture.Source=source;placeholder.Visibility=Visibility.Collapsed;});
             var content=new StackPanel {HorizontalAlignment=HorizontalAlignment.Center};
             content.Children.Add(face);
             content.Children.Add(new TextBlock {Text=game.Name,FontSize=12,FontWeight=FontWeights.SemiBold,TextTrimming=TextTrimming.CharacterEllipsis,MaxWidth=104,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,8,0,0)});

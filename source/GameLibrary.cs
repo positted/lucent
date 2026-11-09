@@ -16,6 +16,8 @@ namespace Lucent
     internal sealed class LibraryGame
     {
         public string Name,Executable,Store,Launch;
+        // Only for the pictures of the app (tests): a picture to show in place of the program's own icon.
+        public System.Windows.Media.ImageSource Picture;
     }
 
     // The games installed on this PC, found from the launchers' own install records and the files they point to. Nothing here starts, opens or

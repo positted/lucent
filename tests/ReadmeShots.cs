@@ -147,7 +147,22 @@ class ReadmeShots
   Call(shell,"SetBigPlayerOpen",false);await Task.Delay(900);
   // Game profiles, scrolled to the games (the pictures of the games found on this PC).
   Call(shell,"ShowPage","Profiles");await Task.Delay(1500);
-  Shell.ShowGameIcons=true;var found=GameLibrary.Scan();shell.SetLibrary(found);Console.WriteLine("games found: "+found.Count+" ("+string.Join(", ",found.Take(12).Select(g=>g.Name))+")");await Task.Delay(2500);
+  Shell.ShowGameIcons=true;var found=GameLibrary.Scan();
+  // For the picture: VALORANT as found on this PC, then well-known Steam games (their pictures are in the folder named by LUCENT_GAMES) instead of the games on this PC.
+  string gamesFolder=Environment.GetEnvironmentVariable("LUCENT_GAMES");
+  if(!string.IsNullOrEmpty(gamesFolder)&&Directory.Exists(gamesFolder))
+  {
+   var shown=new List<LibraryGame>();
+   var valorant=found.FirstOrDefault(g=>g.Name=="VALORANT");if(valorant!=null)shown.Add(valorant);
+   foreach(string file in Directory.GetFiles(gamesFolder,"*.png").OrderBy(x=>x))
+   {
+    var bitmap=new System.Windows.Media.Imaging.BitmapImage();bitmap.BeginInit();bitmap.CacheOption=System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;bitmap.UriSource=new Uri(file);bitmap.EndInit();bitmap.Freeze();
+    string title=Path.GetFileNameWithoutExtension(file);title=title.Substring(title.IndexOf('-')+1);if(title=="PUBG BATTLEGROUNDS")title="PUBG: BATTLEGROUNDS";
+    shown.Add(new LibraryGame{Name=title,Executable=@"C:\Games\"+title+".exe",Store="Steam",Picture=bitmap});
+   }
+   found=shown;
+  }
+  shell.SetLibrary(found);Console.WriteLine("games found: "+found.Count+" ("+string.Join(", ",found.Take(12).Select(g=>g.Name))+")");await Task.Delay(2500);
   var scroll=(System.Windows.Controls.ScrollViewer)F(shell,"contentScroll").GetValue(shell);scroll.ScrollToVerticalOffset(520);await Task.Delay(900);
   Shot(shell,Path.Combine(output,"game-profiles-games.png"));
   // Settings, with the album cover of a song in the background: the grid of categories, then About and General.

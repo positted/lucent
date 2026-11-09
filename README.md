@@ -129,7 +129,7 @@ Lucent is free and stays free. If it saved you some time, you can [buy me a coff
 
 Made by [@positted](https://github.com/positted), with [Claude](https://claude.com/claude-code) (Anthropic) as a contributor on the code, tests and this page.
 
-Lucent uses [SharpDX](https://github.com/sharpdx/SharpDX) (MIT). The album covers in the pictures belong to their artists and labels and are shown only to demonstrate how Lucent takes its colors from artwork.
+Lucent uses [SharpDX](https://github.com/sharpdx/SharpDX) (MIT). The album covers and game pictures in the screenshots belong to their artists, labels and publishers, and are shown only to demonstrate the app.
 
 ## License
 
