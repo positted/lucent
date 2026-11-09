@@ -1,0 +1,22 @@
+# Build output and old versions (releases are published as Setup files, not committed)
+release/
+archive/
+*.exe
+*.pdb
+obj/
+bin/
+
+# Local results and scratch files
+build-results.txt
+logic-results.txt
+*.bak
+*.bak-*
+*.log
+
+# Reference material that is not part of Lucent
+plexusx-reference.html
+
+# Personal settings and test output
+test-data/
+
+preview-github-page.html

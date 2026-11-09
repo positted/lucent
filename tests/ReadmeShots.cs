@@ -1,0 +1,147 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Forms;
+using Lucent;
+
+// Takes the pictures for the project page: the real main window, the player bar, the big player, the mini player and the settings, on the main display in front of
+// a plain dark window (so no part of the desktop is in a picture), with real album covers (files named "Artist__Song.jpg" in the folder given as the first argument).
+// The pictures are written, with see-through rounded corners, to the folder given as the second argument. It changes no setting.
+class ReadmeShots
+{
+ [DllImport("user32.dll")]static extern bool SetProcessDPIAware();
+ [STAThread]static int Main(string[] args)
+ {
+  if(args.Length<2){Console.WriteLine("usage: covers-folder output-folder");return 2;}
+  var app=new System.Windows.Application();int exit=0;
+  app.Dispatcher.BeginInvoke(new Action(async()=>{try{await Run(args[0],args[1]);}catch(Exception error){Console.WriteLine(error);exit=1;}finally{app.Shutdown();}}));
+  app.Run();return exit;
+ }
+ static object Call(object target,string name,params object[] args){return target.GetType().GetMethod(name,BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public).Invoke(target,args);}
+ static FieldInfo F(object target,string name){return target.GetType().GetField(name,BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public);}
+ static double scale;
+ static System.Drawing.Rectangle RectOf(Window window)
+ {
+  var origin=window.PointToScreen(new System.Windows.Point(0,0));
+  return new System.Drawing.Rectangle((int)Math.Round(origin.X),(int)Math.Round(origin.Y),(int)Math.Round(window.ActualWidth*scale),(int)Math.Round(window.ActualHeight*scale));
+ }
+ // The window as the screen shows it, with the corners cut away smoothly (they would show the dark window behind).
+ static void Save(System.Drawing.Rectangle area,string path,double radius)
+ {
+  using(var raw=new Bitmap(area.Width,area.Height,PixelFormat.Format32bppArgb))
+  {
+   using(var g=Graphics.FromImage(raw))g.CopyFromScreen(area.Location,System.Drawing.Point.Empty,area.Size);
+   if(radius<=0){raw.Save(path,ImageFormat.Png);Console.WriteLine("  "+Path.GetFileName(path)+"  "+area.Width+"x"+area.Height);return;}
+   using(var result=new Bitmap(area.Width,area.Height,PixelFormat.Format32bppArgb))
+   using(var g=Graphics.FromImage(result))
+   {
+    g.SmoothingMode=SmoothingMode.AntiAlias;
+    using(var shape=new GraphicsPath())
+    {
+     float r=(float)(radius*scale*2);
+     shape.AddArc(0,0,r,r,180,90);shape.AddArc(area.Width-r,0,r,r,270,90);shape.AddArc(area.Width-r,area.Height-r,r,r,0,90);shape.AddArc(0,area.Height-r,r,r,90,90);shape.CloseFigure();
+     using(var brush=new TextureBrush(raw))g.FillRectangle(brush,0,0,area.Width,area.Height);
+    }
+    result.Save(path,ImageFormat.Png);
+   }
+  }
+  Console.WriteLine("  "+Path.GetFileName(path)+"  "+area.Width+"x"+area.Height);
+ }
+ static async Task Run(string coversFolder,string output)
+ {
+  Directory.CreateDirectory(output);
+  StateStore.Folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"test-data","readme-shots-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(StateStore.Folder);
+  using(var g=Graphics.FromHwnd(IntPtr.Zero))scale=g.DpiX/96.0;
+  var screen=Screen.PrimaryScreen;
+  // A plain dark window across the display, behind everything we show.
+  var stage=new Window{WindowStyle=WindowStyle.None,ResizeMode=ResizeMode.NoResize,ShowInTaskbar=false,Background=new System.Windows.Media.SolidColorBrush(Environment.GetEnvironmentVariable("LUCENT_STAGE")=="white"?System.Windows.Media.Color.FromRgb(240,240,240):System.Windows.Media.Color.FromRgb(0,0,0)),WindowStartupLocation=WindowStartupLocation.Manual,Left=screen.Bounds.Left/scale,Top=screen.Bounds.Top/scale,Width=screen.Bounds.Width/scale,Height=screen.Bounds.Height/scale};
+  stage.Show();
+  var shell=new Shell(true){WindowStartupLocation=WindowStartupLocation.Manual,Left=screen.Bounds.Left/scale+90,Top=screen.Bounds.Top/scale+60,Width=1180,Height=780};
+  shell.Show();shell.Activate();
+  var prefs=(Preferences)F(shell,"preferences").GetValue(shell);
+  var covers=Directory.GetFiles(coversFolder,"*.jpg").OrderBy(x=>x).ToList();
+  Console.WriteLine("covers: "+string.Join(", ",covers.Select(Path.GetFileNameWithoutExtension)));
+  Func<string,Tuple<MediaTrack,System.Windows.Media.Imaging.BitmapImage>> load=file=>
+  {
+   var parts=Path.GetFileNameWithoutExtension(file).Split(new[]{"__"},StringSplitOptions.None);
+   var bytes=File.ReadAllBytes(file);
+   var bitmap=new System.Windows.Media.Imaging.BitmapImage();bitmap.BeginInit();bitmap.CacheOption=System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;bitmap.DecodePixelWidth=128;bitmap.StreamSource=new MemoryStream(bytes);bitmap.EndInit();bitmap.Freeze();
+   var track=new MediaTrack{Title=parts[1],Artist=parts[0],Source="Spotify",Playing=true,CanPlay=true,CanPause=true,CanNext=true,CanPrevious=true,CanSeek=true,CanShuffle=true,CanRepeat=true,Duration=191,Position=74,Artwork=bytes};
+   return Tuple.Create(track,bitmap);
+  };
+  Action<string> play=file=>
+  {
+   var loaded=load(file);
+   shell.SetMediaAvailable(true);
+   F(shell,"ambientTrack").SetValue(shell,loaded.Item1);F(shell,"paletteArtwork").SetValue(shell,loaded.Item1.Artwork);F(shell,"paletteBitmap").SetValue(shell,loaded.Item2);
+   F(shell,"mediaAccent").SetValue(shell,Lucent.Design.Palette(loaded.Item2));
+   Call(shell,"UpdateAmbientColor");Call(shell,"UpdateHome");
+   var bar=(PlayerBar)F(shell,"playerBar").GetValue(shell);bar.Core.Stop();bar.Core.SetTrack(loaded.Item1);
+   bar.Core.SetTrack(loaded.Item1);
+  };
+  Call(shell,"SetPlayerBarOpen",true);
+  Call(shell,"ShowPage","Home");
+  await Task.Delay(800);
+  // Each cover on Home: the colors follow the cover.
+  foreach(var file in covers)
+  {
+   play(file);await Task.Delay(2600);
+   var name=Path.GetFileNameWithoutExtension(file).Split(new[]{"__"},StringSplitOptions.None)[0].Replace(' ','-').ToLowerInvariant();
+   Save(RectOf(shell),Path.Combine(output,"home-"+name+".png"),8);
+  }
+  // The other pages, with the first cover.
+  play(covers[0]);await Task.Delay(1800);
+  var pages=(IDictionary)F(shell,"pages").GetValue(shell);
+  Console.WriteLine("pages: "+string.Join(", ",pages.Keys.Cast<object>().Select(k=>k.ToString())));
+  foreach(string page in new[]{"Resolution","Video","Crosshair"})
+  {
+   if(!pages.Contains(page))continue;
+   Call(shell,"ShowPage",page);await Task.Delay(1400);
+   Save(RectOf(shell),Path.Combine(output,"page-"+page.ToLowerInvariant()+".png"),8);
+  }
+  Call(shell,"ShowPage","Home");await Task.Delay(900);
+  // The big player.
+  play(covers[Math.Min(1,covers.Count-1)]);await Task.Delay(1200);
+  Call(shell,"SetBigPlayerOpen",true);await Task.Delay(3200);
+  Save(RectOf(shell),Path.Combine(output,"big-player.png"),8);
+  // The same player with lyrics: made-up demo lines in the lyrics cache (nothing is looked up online, and no real song's words are shown).
+  var lyricsCache=(IDictionary)typeof(LyricsService).GetField("cache",BindingFlags.Static|BindingFlags.NonPublic).GetValue(null);
+  var demoLines=new[]{"This is where the words of the song would be","Each line lights up as it is sung","The one that is playing stays bright","The others wait softly behind it","Scroll with the wheel or click a line to jump there","The player takes its colors from the cover","And the lyrics glide to keep up","Line by line, in time with the music","Nothing here is a real song","These are just lines to show how it looks","Open the lyrics with the speech bubble","Close them and the player is just the cover again"};
+  var loadedBig=load(covers[Math.Min(1,covers.Count-1)]);
+  lyricsCache[(loadedBig.Item1.Artist+"|"+loadedBig.Item1.Title).ToLowerInvariant()]=LyricsService.Parse(string.Join("\n",Enumerable.Range(0,30).Select(k=>"["+(k*5/60).ToString("00")+":"+(k*5%60).ToString("00")+".00] "+demoLines[k%demoLines.Length])),null);
+  prefs.ShowLyrics=true;
+  var bigView=(BigPlayerView)F(shell,"bigPlayerView").GetValue(shell);
+  Call(bigView,"ToggleLyrics");await Task.Delay(900);
+  // (A test-mode window does not look songs up, so the demo lines are put in the lyrics view directly.)
+  bigView.Lyrics.SetLyrics((LyricsResult)lyricsCache[(loadedBig.Item1.Artist+"|"+loadedBig.Item1.Title).ToLowerInvariant()]);bigView.Lyrics.Update(74);
+  await Task.Delay(2200);
+  Save(RectOf(shell),Path.Combine(output,"big-player-lyrics.png"),8);
+  Call(bigView,"ToggleLyrics");await Task.Delay(500);
+  Call(shell,"SetBigPlayerOpen",false);await Task.Delay(900);
+  // Game profiles, scrolled to the games (the pictures of the games found on this PC).
+  Call(shell,"ShowPage","Profiles");await Task.Delay(1500);
+  Shell.ShowGameIcons=true;var found=GameLibrary.Scan();shell.SetLibrary(found);Console.WriteLine("games found: "+found.Count+" ("+string.Join(", ",found.Take(12).Select(g=>g.Name))+")");await Task.Delay(2500);
+  var scroll=(System.Windows.Controls.ScrollViewer)F(shell,"contentScroll").GetValue(shell);scroll.ScrollToVerticalOffset(520);await Task.Delay(900);
+  Save(RectOf(shell),Path.Combine(output,"game-profiles-games.png"),8);
+  if(Environment.GetCommandLineArgs().Contains("band"))
+  {
+   // The strip of the window around the player bar over a page with text just above it: is anything blurred above the bar?
+   play(covers[1]);await Task.Delay(1800);
+   Call(shell,"ShowPage","Visual tools");await Task.Delay(1400);
+   var scrollBand=(System.Windows.Controls.ScrollViewer)F(shell,"contentScroll").GetValue(shell);scrollBand.ScrollToVerticalOffset(300);await Task.Delay(1000);
+   var barBand=(FrameworkElement)F(shell,"playerBar").GetValue(shell);var topLeftBand=barBand.PointToScreen(new System.Windows.Point(0,0));
+   Save(new System.Drawing.Rectangle((int)topLeftBand.X-30,(int)topLeftBand.Y-90,(int)Math.Round(barBand.ActualWidth*scale)+60,(int)Math.Round(barBand.ActualHeight*scale)+110),Path.Combine(output,"band-check.png"),0);
+  }
+  shell.Close();stage.Close();
+  Console.WriteLine("PASS: pictures written to "+output);
+ }
+}
