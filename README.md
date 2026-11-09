@@ -97,9 +97,10 @@ Lucent will tell you in About, on Home and in the tray when a newer version is p
 
 ## FAQ
 
-**Why does Windows warn me when I run the setup?**
-Lucent is a small free app made by one person, and it is not code-signed yet (a certificate costs money, and I am looking at free signing for open source). Windows SmartScreen and some antivirus programs are careful with new, unsigned files, so you may see "unknown publisher" or, rarely, a false alarm. The whole source is in this repository. You can read it, or build it yourself with `source/build-local.cmd`. Every release will list its SHA-256 checksum and a [VirusTotal](https://www.virustotal.com) scan link, so you can check the file yourself before you run it (you can also drop the setup onto virustotal.com any time). If your antivirus flags it, please [open an issue](https://github.com/positted/lucent/issues) with the version number.
+**Why does Windows warn me, or my antivirus flag the setup?**
+Lucent is a small free app made by one person, and it is not code-signed yet (a certificate costs money, and I am applying for free signing for open source). Unsigned apps get an "unknown publisher" warning from SmartScreen. A few antivirus engines also flag new, unsigned programs by guesswork rather than by anything they found: Lucent reads the mouse wheel for zoom, listens for your shortcuts and can start with Windows, and that is the kind of thing their machine-learning checks are nervous about. Right now a handful of engines (including Microsoft Defender, as a "Wacatac" machine-learning detection) do this for the setup, and I am reporting it to them. Nothing in Lucent sends your data anywhere or touches your files.
 
+You do not have to take my word for it. The whole source is in this repository, so you can read it or build it yourself with `source/build-local.cmd`. Every release will list its SHA-256 checksum so you can check the file you downloaded. If you would rather wait until the detections clear, that is fine too. If your antivirus flags it, please [open an issue](https://github.com/positted/lucent/issues) with the version number and the name of the detection.
 **Is it really free?**
 Yes. No account, no ads, no locked features, MIT license. Ko-fi is optional.
 
