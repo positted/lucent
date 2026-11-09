@@ -50,18 +50,6 @@ Put a song on and Lucent changes with it. Every album cover gives the window its
 <img src="docs/images/colors-follow-music.gif" alt="The app's colors changing from one album cover to the next" width="640">
 </p>
 
-<table>
-<tr>
-<td align="center"><img src="docs/images/home-furt.png" alt="Home while FURT PYTLE by Sanchez22 plays" width="285"><br><sub>Sanchez22, FURT PYTLE</sub></td>
-<td align="center"><img src="docs/images/home-hater.png" alt="Home while Hater by Yeat plays" width="285"><br><sub>Yeat, Hater</sub></td>
-<td align="center"><img src="docs/images/home-trend.png" alt="Home while Real Trendsetter by Yeat plays" width="285"><br><sub>Yeat, Real Trendsetter</sub></td>
-</tr>
-<tr>
-<td align="center"><img src="docs/images/home-passion.png" alt="Home while Passionfruit by Drake plays" width="285"><br><sub>Drake, Passionfruit</sub></td>
-<td align="center"><img src="docs/images/home-hug.png" alt="Home while Gimme A Hug by Drake plays" width="285"><br><sub>Drake, Gimme A Hug</sub></td>
-<td align="center"><img src="docs/images/home-fein.png" alt="Home while FE!N by Travis Scott plays" width="285"><br><sub>Travis Scott, FE!N</sub></td>
-</tr>
-</table>
 ## Take a look
 
 <table>

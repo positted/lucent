@@ -30,14 +30,30 @@ namespace ResolutionSwitcher
             Enabled = false;
             TabStop = false;
             BackColor = Color.Magenta; TransparencyKey = Color.Magenta;
-            Bounds = Screen.PrimaryScreen.Bounds;
+            Bounds = TargetScreen().Bounds;
             StartPosition = FormStartPosition.Manual;
             AutoScaleMode = AutoScaleMode.None;
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         }
+        // The display the crosshair is drawn on, by its Windows device name; the main display when none is chosen or the chosen one is not connected.
+        private string monitor = "";
+        public string Monitor { get { return monitor; } }
+        public void SetMonitor(string deviceName)
+        {
+            monitor = deviceName ?? "";
+            if (IsDisposed || Disposing) return;
+            RefreshDisplayBounds();
+        }
+        private Screen TargetScreen()
+        {
+            if (!string.IsNullOrEmpty(monitor))
+                foreach (Screen screen in Screen.AllScreens)
+                    if (string.Equals(screen.DeviceName, monitor, StringComparison.OrdinalIgnoreCase)) return screen;
+            return Screen.PrimaryScreen;
+        }
         public void RefreshDisplayBounds()
         {
-            Rectangle current = Screen.PrimaryScreen.Bounds;
+            Rectangle current = TargetScreen().Bounds;
             if (Bounds != current) { Bounds = current; Invalidate(); }
         }
         private void OnDisplaySettingsChanged(object sender, EventArgs e)

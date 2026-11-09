@@ -75,6 +75,7 @@ namespace Lucent
             card.Children.Add(stage);
             crosshairButton=Action(crosshair==null?"Turn crosshair on":"Turn crosshair off",ToggleCrosshair);
             card.Children.Add(crosshairButton);
+            card.Children.Add(CrosshairMonitorChoices());
             crosshairViews.Add(()=>
             {
                 var spec=CrosshairLook;
@@ -402,11 +403,50 @@ namespace Lucent
         }
         static System.Drawing.Color ToDrawing(Color color){return System.Drawing.Color.FromArgb(color.R,color.G,color.B);}
         void ConfigureCrosshair(){crosshair.Configure(CrosshairLook);}
+        // With more than one display, a choice of which one the crosshair is drawn on.
+        readonly List<Button> crosshairMonitorButtons=new List<Button>();
+        FrameworkElement CrosshairMonitorChoices()
+        {
+            var box=new StackPanel {Margin=new Thickness(0,14,0,0)};
+            crosshairMonitorButtons.Clear();
+            var screens=System.Windows.Forms.Screen.AllScreens;
+            if(screens.Length<2)return box;
+            box.Children.Add(Step("Show the crosshair on"));
+            var row=new WrapPanel();
+            for(int i=0;i<screens.Length;i++)
+            {
+                var screen=screens[i];string device=screen.DeviceName;
+                var chip=Action("Display "+(i+1)+(screen.Primary?" (main)":"")+"  \u00B7  "+screen.Bounds.Width+" \u00D7 "+screen.Bounds.Height,()=>ChooseCrosshairMonitor(device));
+                chip.Tag=device;chip.Padding=new Thickness(16,8,16,8);chip.FontSize=13;chip.MinHeight=0;chip.Margin=new Thickness(0,0,6,6);
+                System.Windows.Automation.AutomationProperties.SetName(chip,"Crosshair on display "+(i+1));
+                crosshairMonitorButtons.Add(chip);row.Children.Add(chip);
+            }
+            box.Children.Add(row);
+            ShowCrosshairMonitor();
+            return box;
+        }
+        // The saved display, or the main one when none is saved or it is not connected.
+        string ChosenCrosshairMonitor()
+        {
+            var screens=System.Windows.Forms.Screen.AllScreens;
+            foreach(var screen in screens)if(string.Equals(screen.DeviceName,preferences.CrosshairMonitor,StringComparison.OrdinalIgnoreCase))return screen.DeviceName;
+            foreach(var screen in screens)if(screen.Primary)return screen.DeviceName;
+            return "";
+        }
+        void ShowCrosshairMonitor(){string chosen=ChosenCrosshairMonitor();foreach(var chip in crosshairMonitorButtons)StyleChoice(chip,Equals(chip.Tag,chosen));}
+        internal void ChooseCrosshairMonitor(string device)
+        {
+            preferences.CrosshairMonitor=device;
+            SaveSoon();
+            if(crosshair!=null)crosshair.SetMonitor(device);
+            ShowCrosshairMonitor();
+            SetStatus("Crosshair moved to that display");
+        }
         Button crosshairButton;
         void ToggleCrosshair()
         {
             if(TestMode)return;
-            if(crosshair==null){crosshair=new CrosshairOverlay();ConfigureCrosshair();crosshair.Show();Count(c=>c.CrosshairUses++);SetStatus("Crosshair on");}
+            if(crosshair==null){crosshair=new CrosshairOverlay();crosshair.SetMonitor(preferences.CrosshairMonitor);ConfigureCrosshair();crosshair.Show();Count(c=>c.CrosshairUses++);SetStatus("Crosshair on");}
             else{crosshair.Dispose();crosshair=null;SetStatus("Crosshair off");}
             crosshairButton.Content=crosshair==null?"Turn crosshair on":"Turn crosshair off";
             UpdateHome();

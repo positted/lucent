@@ -76,6 +76,8 @@ namespace Lucent
         public bool Fahrenheit=false;
         // How Home is laid out: its cards in order, each "name:h" (half width) or "name:f" (full width), with a "!" in front when hidden. Empty means the standard layout.
         public string HomeLayout="";
+        // The display the crosshair is shown on, by its Windows device name. Empty means the main display (also used when the chosen one is not connected).
+        public string CrosshairMonitor="";
         // The mini player: lyrics text size and alignment, which views hide their controls while the pointer rests, how fast its background drifts,
         // and the size each view was last given (0 means the default).
         public double MiniLyricsSize=26,MiniBackdropSpeed=1,MiniCompactWidth,MiniLyricsWidth,MiniLyricsHeight;
@@ -185,6 +187,7 @@ namespace Lucent
             if(value.PlayerPosition!="Left"&&value.PlayerPosition!="Right")value.PlayerPosition="Middle";
             value.PcRings=SystemStats.CleanRings(value.PcRings);
             value.HomeLayout=HomeLayoutText.Clean(value.HomeLayout);
+            if(value.CrosshairMonitor==null)value.CrosshairMonitor="";
             if(value.DiscordSettingVersion<1){value.DiscordOn=true;value.DiscordSettingVersion=1;}
             if(value.Stats==null)value.Stats=new UsageStats();
             var counts=value.Stats;counts.Launches=Math.Max(0,counts.Launches);counts.MinutesOpen=Math.Max(0,counts.MinutesOpen);counts.ResolutionSwitches=Math.Max(0,counts.ResolutionSwitches);counts.ZoomUses=Math.Max(0,counts.ZoomUses);counts.GamesStarted=Math.Max(0,counts.GamesStarted);counts.ProfileSwitches=Math.Max(0,counts.ProfileSwitches);counts.MemoryCleanups=Math.Max(0,counts.MemoryCleanups);counts.CrosshairUses=Math.Max(0,counts.CrosshairUses);

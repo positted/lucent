@@ -768,7 +768,9 @@ namespace Lucent
             Design.ShareMotion(settingsRailButton,settingsOverlayGear);
             // While settings is closed the copy keeps sitting exactly over the sidebar gear, whatever the window does.
             workspace.LayoutUpdated+=(s,e)=>{if(!settingsOpen)PositionSettingsGear();};
-            settingsBackdrop.Fill=new VisualBrush(root){Stretch=Stretch.None};
+            // The blurred copy of the app behind settings must sit exactly over the app: the brush is mapped to the app's own size, not to the bounds of everything drawn in it
+            // (parts of the app draw past its edge, like the blur under the player bar, and that made the copy look zoomed in).
+            FitSettingsBackdrop();root.SizeChanged+=(s,e)=>FitSettingsBackdrop();
             settingsBackdropLayer.Children.Add(settingsBackdrop);
             windowSurface.ClipToBounds=true;
             Panel.SetZIndex(settingsBackdropLayer,19);
@@ -788,7 +790,13 @@ namespace Lucent
             var corner=VisualTreeHelper.GetOffset(settingsCard);
             settingsCard.RenderTransformOrigin=new Point((middle.X-corner.X)/settingsCard.Width,(middle.Y-corner.Y)/settingsCard.Height);
         }
-        void SizeSettingsPanel()
+        void FitSettingsBackdrop()
+        {
+            double width=root.ActualWidth,height=root.ActualHeight;
+            if(width<=0||height<=0)return;
+            const double bleed=24;   // the backdrop rectangle reaches this far past every edge so its blur has no faded border
+            settingsBackdrop.Fill=new VisualBrush(root){Stretch=Stretch.Fill,AlignmentX=AlignmentX.Left,AlignmentY=AlignmentY.Top,TileMode=TileMode.None,ViewboxUnits=BrushMappingMode.Absolute,Viewbox=new Rect(-bleed,-bleed,width+2*bleed,height+2*bleed),ViewportUnits=BrushMappingMode.RelativeToBoundingBox,Viewport=new Rect(0,0,1,1)};
+        }        void SizeSettingsPanel()
         {
             if(settingsCard==null)return;
             settingsCard.Width=Math.Min(980,Math.Max(600,ActualWidth-130));

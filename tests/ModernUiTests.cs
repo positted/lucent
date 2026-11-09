@@ -82,7 +82,7 @@ class ModernUiTests
    Call(shell,"SetSettingsOpen",false);await Task.Delay(360);Check(!shell.SettingsOpen&&ReferenceEquals(shownPage(),original),"Closing settings reloaded page");
    Check(((Grid)Field(shell,"settingsLayer")).Visibility==Visibility.Hidden&&((UIElement)Field(shell,"settingsBackdropLayer")).Visibility==Visibility.Collapsed&&gear.Opacity==1,"Settings did not retain layout or restore its original gear");
    var settingsCardElement=(UIElement)Field(shell,"settingsCard");// Closed, the card is hidden and sits a little smaller; the open window resting exactly in place is checked in the shell polish test.
-  Check(((Grid)Field(shell,"settingsLayer")).Visibility==Visibility.Hidden||settingsCardElement.RenderTransform==null||settingsCardElement.RenderTransform.Value.IsIdentity,"Settings card is moving while visible after it settled");Check(((VisualBrush)((System.Windows.Shapes.Rectangle)Field(shell,"settingsBackdrop")).Fill).Stretch==Stretch.None,"Settings backdrop is zoomed relative to the page");
+  Check(((Grid)Field(shell,"settingsLayer")).Visibility==Visibility.Hidden||settingsCardElement.RenderTransform==null||settingsCardElement.RenderTransform.Value.IsIdentity,"Settings card is moving while visible after it settled");{var backdropBrush=(VisualBrush)((System.Windows.Shapes.Rectangle)Field(shell,"settingsBackdrop")).Fill;var appRoot=(Grid)Field(shell,"root");Check(backdropBrush.ViewboxUnits==BrushMappingMode.Absolute&&Math.Abs(backdropBrush.Viewbox.Width-(appRoot.ActualWidth+48))<.5&&Math.Abs(backdropBrush.Viewbox.Height-(appRoot.ActualHeight+48))<.5&&backdropBrush.Viewbox.X==-24&&backdropBrush.Viewbox.Y==-24,"Settings backdrop is not mapped one to one onto the page (it looks zoomed)");}
    await CheckSettingsTransition(shell);
    await CheckScrolling(shell,pages);
    var dockTipButton=(Button)Field(shell,"playerDockButton");var dockTip=(ToolTip)dockTipButton.ToolTip;Check(ToolTipService.GetInitialShowDelay(dockTipButton)==500&&ToolTipService.GetBetweenShowDelay(dockTipButton)==500,"Player tooltip delay");
@@ -295,6 +295,19 @@ class ModernUiTests
   // The Crosshair tab: a builder that follows every control, saved looks and shareable codes. There are no ready-made styles.
   var prefs=(Preferences)Field(shell,"preferences");var before=prefs.Crosshair.Copy();
   Call(shell,"ShowPage","Crosshair");shell.UpdateLayout();var page=(DependencyObject)Field(shell,"content");
+  // Which display the crosshair is drawn on: a choice per display (only with more than one), saved, and the overlay follows it (without ever being shown here).
+  var allScreens=System.Windows.Forms.Screen.AllScreens;string keptMonitor=prefs.CrosshairMonitor;
+  var monitorChips=Visuals<Button>(page).Where(b=>(System.Windows.Automation.AutomationProperties.GetName(b)??"").StartsWith("Crosshair on display")).ToArray();
+  Check(monitorChips.Length==(allScreens.Length>1?allScreens.Length:0),"The crosshair page should offer one choice per display when there is more than one: "+monitorChips.Length+" of "+allScreens.Length);
+  if(allScreens.Length>1)
+  {
+   var secondScreen=allScreens.First(s=>!s.Primary);
+   monitorChips.First(b=>Equals(b.Tag,secondScreen.DeviceName)).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+   Check(prefs.CrosshairMonitor==secondScreen.DeviceName,"Choosing a display for the crosshair was not saved");
+   using(var overlay=new ResolutionSwitcher.CrosshairOverlay()){overlay.SetMonitor(secondScreen.DeviceName);Check(overlay.Bounds==secondScreen.Bounds,"The crosshair overlay did not move to the chosen display: "+overlay.Bounds+" vs "+secondScreen.Bounds);overlay.SetMonitor("\\\\.\\NOT-CONNECTED");Check(overlay.Bounds==System.Windows.Forms.Screen.PrimaryScreen.Bounds,"A display that is not connected must fall back to the main display");}
+   monitorChips.First(b=>Equals(b.Tag,allScreens.First(s=>s.Primary).DeviceName)).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+  }
+  prefs.CrosshairMonitor=keptMonitor;
   // A closed folder has not built its contents yet, so open them all to look inside.
   foreach(var folder in Visuals<Expander>(page).Where(e=>Equals(e.Tag,"Folder")).ToArray())folder.IsExpanded=true;
   shell.UpdateLayout();
