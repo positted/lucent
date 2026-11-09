@@ -13,7 +13,7 @@ Its colors come from the album that is playing.
 
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4) ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![Price: free](https://img.shields.io/badge/price-free-brightgreen) [![Stars](https://img.shields.io/github/stars/positted/lucent?style=flat)](https://github.com/positted/lucent/stargazers)
 
-<a href="https://github.com/positted/lucent/discussions"><img src="docs/images/discord-banner.svg" alt="Come say hello! Join our community on Discord" width="330"></a> &nbsp; <a href="https://ko-fi.com/lucent_"><img src="docs/images/kofi-banner.svg" alt="Buy me a coffee. Support Lucent on Ko-fi" width="270"></a>
+<a href="https://github.com/positted/lucent/discussions"><img src="docs/images/discord-banner.svg" alt="Come say hello! Join our community on Discord" width="330"></a> &nbsp; <a href="https://ko-fi.com/lucent_"><img src="docs/images/kofi-banner.svg" alt="Buy me a coffee. Support Lucent on Ko-fi" width="328"></a>
 
 <!-- Discord server not made yet: the community banner points to GitHub Discussions for now. Swap the link for the invite later. -->
 <!-- TODO GIFs (need a live recording): docs/images/mini-player-close.gif, docs/images/dark-boost-scroll.gif -->
