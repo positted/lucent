@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
@@ -163,6 +163,8 @@ namespace Lucent
         // Tests replace this so nothing is downloaded.
         internal static Func<string> Fetcher=Download;
         static Dictionary<string,KnownGame> byExecutable,byName;
+        // For an executable the list gives with a folder ("green hell/gh.exe"), the folder it must run from. A short name like gh.exe is also the GitHub CLI.
+        static Dictionary<string,string> folderOf=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
         static bool loading;
         static readonly object gate=new object();
         internal static void Reset(){lock(gate){byExecutable=null;byName=null;loading=false;}}
@@ -190,7 +192,7 @@ namespace Lucent
         }
         internal static void Parse(string json)
         {
-            var exe=new Dictionary<string,KnownGame>(StringComparer.OrdinalIgnoreCase);var names=new Dictionary<string,KnownGame>(StringComparer.OrdinalIgnoreCase);
+            var exe=new Dictionary<string,KnownGame>(StringComparer.OrdinalIgnoreCase);var names=new Dictionary<string,KnownGame>(StringComparer.OrdinalIgnoreCase);var folders=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
             var list=new JavaScriptSerializer{MaxJsonLength=int.MaxValue}.DeserializeObject(json) as System.Collections.IEnumerable;
             if(list!=null)
                 foreach(object item in list)
@@ -214,11 +216,16 @@ namespace Lucent
                             var entry=e as IDictionary<string,object>;object file,os,launcher;if(entry==null||!entry.TryGetValue("name",out file)||file==null)continue;
                             if(entry.TryGetValue("os",out os)&&os!=null&&os.ToString()!="win32")continue;
                             if(entry.TryGetValue("is_launcher",out launcher)&&launcher is bool&&(bool)launcher)continue;
-                            string leaf=Path.GetFileName(file.ToString().TrimStart('>').Replace('/','\\'));
-                            if(leaf.Length>0&&!IsHelperProgram(leaf)&&!exe.ContainsKey(leaf))exe[leaf]=game;
+                            string listed=file.ToString().TrimStart('>').Replace('/','\\');string leaf=Path.GetFileName(listed);
+                            if(leaf.Length>0&&!IsHelperProgram(leaf)&&!exe.ContainsKey(leaf))
+                            {
+                                exe[leaf]=game;
+                                string folder=Path.GetFileName((Path.GetDirectoryName(listed)??"").TrimEnd('\\'));
+                                if(!string.IsNullOrEmpty(folder))folders[leaf]=folder;
+                            }
                         }
                 }
-            lock(gate){byExecutable=exe;byName=names;}
+            lock(gate){byExecutable=exe;byName=names;folderOf=folders;}
         }
         // Gets the list started, once. Until it has arrived, lookups find nothing.
         static void Load(out Dictionary<string,KnownGame> exe,out Dictionary<string,KnownGame> names)
@@ -238,14 +245,25 @@ namespace Lucent
             return null;
         }
         // The first running program (by name, like "RobloxPlayerBeta") that is a known game. Only names are looked at.
-        internal static KnownGame FindRunning(IEnumerable<string> processNames)
+        internal static KnownGame FindRunning(IEnumerable<string> processNames){return FindRunning(processNames,null);}
+        // pathOf gives where a running program is (or null when it cannot be read): a program whose list entry names a folder only counts when it runs from a folder of that name,
+        // so a tool like the GitHub CLI (gh.exe) is not taken for the game that shares its file name.
+        internal static KnownGame FindRunning(IEnumerable<string> processNames,Func<string,string> pathOf)
         {
             Dictionary<string,KnownGame> exe,names;Load(out exe,out names);
             if(exe==null||processNames==null)return null;
+            Dictionary<string,string> folders;lock(gate)folders=folderOf;
             foreach(string name in processNames)
             {
-                KnownGame game;
-                if(!string.IsNullOrEmpty(name)&&exe.TryGetValue(name+".exe",out game))return game;
+                KnownGame game;string leaf=name+".exe";
+                if(string.IsNullOrEmpty(name)||!exe.TryGetValue(leaf,out game))continue;
+                string folder;
+                if(pathOf!=null&&folders!=null&&folders.TryGetValue(leaf,out folder))
+                {
+                    string path=null;try{path=pathOf(name);}catch(Exception){}
+                    if(path!=null&&path.IndexOf("\\"+folder+"\\",StringComparison.OrdinalIgnoreCase)<0)continue;
+                }
+                return game;
             }
             return null;
         }

@@ -152,7 +152,7 @@ namespace Lucent
                 ExitApp();
             };
             var card=new Border {Width=380,Background=new SolidColorBrush(Color.FromRgb(28,28,30)),BorderBrush=new SolidColorBrush(Color.FromArgb(46,255,255,255)),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(18),Padding=new Thickness(20),
-                HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(0,58,16,0),Child=stack,RenderTransformOrigin=new Point(1,0),RenderTransform=new ScaleTransform(.94,.94),
+                HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(0,72,16,0),Child=stack,RenderTransformOrigin=new Point(1,0),RenderTransform=new ScaleTransform(.94,.94),
                 Effect=new System.Windows.Media.Effects.DropShadowEffect {BlurRadius=30,ShadowDepth=6,Opacity=.55,Color=Colors.Black}};
             layer.Children.Add(card);
             layer.KeyDown+=(s,e)=>{if(e.Key==Key.Escape&&later.IsEnabled){HideUpdatePopup();e.Handled=true;}};

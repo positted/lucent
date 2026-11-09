@@ -439,7 +439,8 @@ namespace Lucent
             statusCard.BorderThickness=new Thickness(0); // no border: the notice is a see-through card
             statusCard.CornerRadius=new CornerRadius(22);statusCard.Padding=new Thickness(18,14,24,14);
             statusCard.Effect=new System.Windows.Media.Effects.DropShadowEffect {BlurRadius=30,ShadowDepth=8,Opacity=.55,Color=Colors.Black};
-            statusCard.HorizontalAlignment=HorizontalAlignment.Center;statusCard.VerticalAlignment=VerticalAlignment.Top;statusCard.Margin=new Thickness(190,16,190,0);statusCard.MaxWidth=620;
+            // The notice sits in the empty spot at the top right, between the tabs and the window buttons.
+            statusCard.HorizontalAlignment=HorizontalAlignment.Right;statusCard.VerticalAlignment=VerticalAlignment.Top;statusCard.Margin=new Thickness(0,10,148,0);statusCard.MaxWidth=300;
             statusCard.RenderTransform=statusSlide;statusCard.Visibility=Visibility.Collapsed;statusCard.IsHitTestVisible=false;
             Panel.SetZIndex(statusCard,10);root.Children.Add(statusCard);
         }

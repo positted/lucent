@@ -110,7 +110,19 @@ class ReadmeShots
   Call(shell,"SetPlayerBarOpen",true);
   Call(shell,"ShowPage","Home");
   await Task.Delay(800);
-  // Made-up numbers for Your PC, so the rings show percentages and temperatures in the pictures (nothing is measured here).
+  if(Environment.GetEnvironmentVariable("LUCENT_ONLY")=="update")
+  {
+   // The update panel and a notice, as they look at the top right.
+   play(covers[0]);Call(shell,"ShowPage","Home");await Task.Delay(1500);
+   Lucent.Updates.Source="positted/lucent";
+   Lucent.Updates.Fetcher=url=>"{\"tag_name\":\"v1.1127\",\"html_url\":\"https://github.com/positted/lucent/releases/tag/v1.1127\",\"body\":\"A new player, vibrance up to 300%, and Customize Home.\"}";
+   await (Task)Call(shell,"CheckForUpdates",true);await Task.Delay(900);
+   Shot(shell,Path.Combine(output,"update-panel.png"));
+   Call(shell,"HideUpdatePopup");await Task.Delay(300);
+   Call(shell,"ShowPage","Crosshair");await Task.Delay(500);Call(shell,"SetStatus","Crosshair off");await Task.Delay(800);
+   Shot(shell,Path.Combine(output,"notice.png"));
+   shell.Close();stage.Close();Console.WriteLine("PASS: update pictures written to "+output);return;
+  }  // Made-up numbers for Your PC, so the rings show percentages and temperatures in the pictures (nothing is measured here).
   shell.ShowSystemStats(new SystemSnapshot{Cpu=37,CpuTemp=58,RamUsedGb=19.8,RamTotalGb=31.9,Gpu=64,GpuTemp=66,VramUsedGb=6.1,VramTotalGb=12,GpuName="Fixture"});
   // Each cover on Home: the colors follow the cover.
   bool quick=Environment.GetEnvironmentVariable("LUCENT_ONLY")=="quick";

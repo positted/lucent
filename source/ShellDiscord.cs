@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -89,7 +89,7 @@ namespace Lucent
                 {
                     var profile=probe!=null?probe():FindRunningProfile(profiles);
                     if(profile!=null)return new DiscordGame {Name=profile.Name,Executable=profile.Executable};
-                    var known=DiscordGameIcons.FindRunning(namesProbe!=null?namesProbe():RunningProgramNames());
+                    var known=DiscordGameIcons.FindRunning(namesProbe!=null?namesProbe():RunningProgramNames(),namesProbe!=null?(Func<string,string>)null:ProgramPath);
                     if(known!=null)return new DiscordGame {Name=known.Name,Icon=known.Icon};
                     // No game: the song, with its cover from Deezer's public search.
                     if(playing)return new DiscordGame {Song=new DiscordSong {Title=track.Title,Artist=track.Artist,Cover=SongCovers.Find(track.Title,track.Artist),Position=track.Position,Duration=track.Duration}};
@@ -100,6 +100,14 @@ namespace Lucent
             catch(Exception){}
             finally{readingDiscord=false;}
         }        // Sends the status when it differs from what Discord already shows (a game starting or ending, a changed option). No game means no status.
+        // Where a running program is, from its name (null when Windows will not say). Only the path is read, never the program itself.
+        static string ProgramPath(string name)
+        {
+            System.Diagnostics.Process[] found;
+            try{found=System.Diagnostics.Process.GetProcessesByName(name);}catch(Exception){return null;}
+            try{foreach(var process in found){string path=ResolutionSwitcher.ProcessIdentity.ImagePath(process.Id);if(path!=null)return path;}return null;}
+            finally{foreach(var process in found)process.Dispose();}
+        }
         static List<string> RunningProgramNames()
         {
             var found=new List<KeyValuePair<int,string>>();

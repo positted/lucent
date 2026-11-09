@@ -191,6 +191,7 @@ internal static class LogicTests
         Directory.Delete(oldFolder,true);Directory.Delete(newFolder,true);
         Check(LegacyNames.SingleInstanceMutex.StartsWith("Local\\")&&LegacyNames.DataFolder.Length>0,"The names shared with installed versions are missing");
         DiscordChecks();
+        DiscordHelperChecks();
         LauncherChecks();
         HomeLayoutChecks();
         VisionChecks();
@@ -241,6 +242,20 @@ internal static class LogicTests
         var games=GameLibrary.Scan();
         Check(games!=null,"Scanning every launcher must always return a list, even when none is installed");
         Console.WriteLine("PASS: games from GOG, Ubisoft, EA, Battle.net, Riot and Xbox: Riot and Xbox records read (names, folders, programs), broken or resource-only records handled, only the exact Ubisoft launch address added, and a scan of this PC returned "+games.Count+" games without error.");
+    }
+    // ---- Discord must not call a tool a game: gh.exe (the GitHub CLI) is also listed for Green Hell, which lives in a folder named "Green Hell".
+    static void DiscordHelperChecks()
+    {
+        DiscordGameIcons.Reset();
+        DiscordGameIcons.Parse("[{\"id\":\"1\",\"name\":\"Green Hell\",\"executables\":[{\"name\":\"green hell/gh.exe\",\"os\":\"win32\"}]},{\"id\":\"2\",\"name\":\"Plain Game\",\"executables\":[{\"name\":\"plaingame.exe\",\"os\":\"win32\"}]}]");
+        Check(DiscordGameIcons.FindRunning(new[]{"gh"},n=>@"C:\Program Files\GitHub CLI\gh.exe")==null,"The GitHub CLI was taken for Green Hell");
+        var real=DiscordGameIcons.FindRunning(new[]{"gh"},n=>@"D:\Games\Green Hell\GH.exe");
+        Check(real!=null&&real.Name=="Green Hell","Green Hell running from its own folder was not recognised");
+        Check(DiscordGameIcons.FindRunning(new[]{"gh"},n=>null)!=null,"A game whose path cannot be read should still be recognised by name");
+        var plain=DiscordGameIcons.FindRunning(new[]{"plaingame"},n=>@"E:\Anywhere\plaingame.exe");
+        Check(plain!=null&&plain.Name=="Plain Game","A game listed without a folder should be recognised wherever it is");
+        DiscordGameIcons.Reset();
+        Console.WriteLine("PASS: a program that shares a file name with a game (gh.exe and Green Hell) is only taken for the game when it runs from the game's folder.");
     }
     static void DiscordChecks()
     {
