@@ -118,11 +118,11 @@ Settings live in `%LOCALAPPDATA%\lucent`. Uninstall from Windows Settings → Ap
 
 ## Join the community
 
+Ask questions, share your game profiles and crosshair codes, and tell me what to build next. A Discord server is coming. Until then, the [Discussions tab](https://github.com/positted/lucent/discussions) is the place.
+
 <p align="center">
 <a href="https://github.com/positted/lucent/discussions"><img src="docs/images/discord-banner.svg" alt="Come say hello! Join our community on Discord" width="330"></a>
 </p>
-
-Ask questions, share your game profiles and crosshair codes, and tell me what to build next. A Discord server is coming. Until then, the [Discussions tab](https://github.com/positted/lucent/discussions) is the place.
 
 ## Support Lucent
 
