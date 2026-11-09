@@ -1,0 +1,29 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        shell: cmd
+        working-directory: source
+        run: build-local.cmd
+
+      - name: Logic tests
+        shell: cmd
+        working-directory: source
+        run: test-local.cmd
+
+      # The UI tests open real windows. A hosted runner has no display like a PC, so a failure here is reported but does not fail the job.
+      - name: UI tests
+        shell: cmd
+        working-directory: source
+        continue-on-error: true
+        run: test-ui.cmd

@@ -89,7 +89,7 @@ namespace Lucent
                     var asset=item as IDictionary<string,object>;if(asset==null)continue;
                     Func<string,string> field=key=>{object value;return asset.TryGetValue(key,out value)&&value!=null?value.ToString():null;};
                     string name=field("name")??"";
-                    if(!Regex.IsMatch(name,@"^Lucent-Setup-[A-Za-z0-9._-]+\.exe$",RegexOptions.IgnoreCase))continue;
+                    if(!Regex.IsMatch(name,@"^Lucent-Setup(-[A-Za-z0-9._-]+)?\.exe$",RegexOptions.IgnoreCase))continue;
                     info.AssetName=name;info.AssetUrl=field("browser_download_url");info.AssetDigest=field("digest");
                     long size;if(long.TryParse(field("size"),out size))info.AssetSize=size;
                     break;
