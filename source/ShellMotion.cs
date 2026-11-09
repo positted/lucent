@@ -134,23 +134,37 @@ namespace Lucent
         }        // Runs the leaving motion, then what follows (really minimizing, or hiding to the tray). Minimizing shrinks the window toward its top left corner; going to
         // the tray (toRight) is the exact reverse of coming back from it: the window slides to the right, shrinks a little and fades.
         // Going to the tray and coming back from it use the same distance, size, time and easing, one the mirror of the other.
-        const double MotionTime=170;
+        const double MotionTime=200;
+        // While the window shrinks or grows it is drawn once into a picture on the graphics card and only that picture moves, and the drifting colors stand still,
+        // so no text or card is drawn again at every step.
+        void BeginMotionCache()
+        {
+            flowBackdrop.Hold(true);
+            windowSurface.CacheMode=new BitmapCache(VisualTreeHelper.GetDpi(this).DpiScaleX){SnapsToDevicePixels=false};
+        }
+        void EndMotionCache()
+        {
+            windowSurface.CacheMode=null;
+            flowBackdrop.Hold(WindowState==WindowState.Minimized);
+        }
         void AnimateAway(Action then)
         {
             if(TestMode||preferences.PerformanceMode||closing||leaving||!IsVisible||WindowState==WindowState.Minimized){then();return;}
             leaving=true;
+            BeginMotionCache();
             var scale=new ScaleTransform(1,1);
             windowSurface.RenderTransformOrigin=new Point(0,0);
             windowSurface.RenderTransform=scale;
             var span=TimeSpan.FromMilliseconds(MotionTime);
-            IEasingFunction ease=new PowerEase {EasingMode=EasingMode.EaseIn,Power=2};
-            var shrink=new DoubleAnimation(1,.9,span){EasingFunction=ease};
+            IEasingFunction ease=new CubicEase {EasingMode=EasingMode.EaseIn};
+            var shrink=new DoubleAnimation(1,.92,span){EasingFunction=ease};
             shrink.Completed+=(s,e)=>
             {
                 then();
                 // Put everything back while it is gone, so that coming back starts from the normal window.
                 scale.BeginAnimation(ScaleTransform.ScaleXProperty,null);scale.BeginAnimation(ScaleTransform.ScaleYProperty,null);
                 windowSurface.RenderTransform=Transform.Identity;windowSurface.RenderTransformOrigin=new Point(0,0);BeginAnimation(OpacityProperty,null);Opacity=1;leaving=false;
+                EndMotionCache();
             };
             scale.BeginAnimation(ScaleTransform.ScaleXProperty,shrink);scale.BeginAnimation(ScaleTransform.ScaleYProperty,shrink.Clone());
             BeginAnimation(OpacityProperty,new DoubleAnimation(1,0,span){EasingFunction=ease});
@@ -159,15 +173,25 @@ namespace Lucent
         // with the same size, time and easing, but toward the top left corner.)
         void GrowBack()
         {
-            var scale=new ScaleTransform(.9,.9);
+            var scale=new ScaleTransform(.92,.92);
             windowSurface.RenderTransformOrigin=new Point(1,0);
             windowSurface.RenderTransform=scale;
             Opacity=0;
-            var span=TimeSpan.FromMilliseconds(MotionTime);
-            var grow=new DoubleAnimation(.9,1,span){EasingFunction=new PowerEase {EasingMode=EasingMode.EaseOut,Power=2}};
-            grow.Completed+=(s,e)=>{windowSurface.RenderTransform=Transform.Identity;windowSurface.RenderTransformOrigin=new Point(0,0);BeginAnimation(OpacityProperty,null);Opacity=1;};
-            scale.BeginAnimation(ScaleTransform.ScaleXProperty,grow);scale.BeginAnimation(ScaleTransform.ScaleYProperty,grow.Clone());
-            BeginAnimation(OpacityProperty,new DoubleAnimation(0,1,span){EasingFunction=new PowerEase {EasingMode=EasingMode.EaseOut,Power=2}});
+            BeginMotionCache();
+            // The window has just been shown again and its first frame takes longer than the others. The motion starts once that frame is drawn, so it plays
+            // from its beginning instead of skipping ahead to catch up.
+            int frames=0;EventHandler begin=null;
+            begin=(s,e)=>
+            {
+                if(++frames<2)return;
+                CompositionTarget.Rendering-=begin;
+                var span=TimeSpan.FromMilliseconds(MotionTime);
+                var grow=new DoubleAnimation(.92,1,span){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}};
+                grow.Completed+=(c,d)=>{windowSurface.RenderTransform=Transform.Identity;windowSurface.RenderTransformOrigin=new Point(0,0);BeginAnimation(OpacityProperty,null);Opacity=1;EndMotionCache();};
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty,grow);scale.BeginAnimation(ScaleTransform.ScaleYProperty,grow.Clone());
+                BeginAnimation(OpacityProperty,new DoubleAnimation(0,1,span){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
+            };
+            CompositionTarget.Rendering+=begin;
         }        void ChangePage(string key,bool animate)
         {
             int motion=++pageMotion;

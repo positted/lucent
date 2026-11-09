@@ -331,8 +331,10 @@ namespace Lucent
             Changed();
         }
         // Moves to a new size, keeping the top left corner where it is unless the bottom would leave the screen.
+        int resizeMotion;
         void ResizeTo(Size target,bool animate)
         {
+            resizeMotion++;
             var area=SystemParameters.WorkArea;
             double top=testMode?Top:Math.Max(area.Top,Math.Min(Top,area.Bottom-target.Height));
             animating=true;
@@ -358,8 +360,19 @@ namespace Lucent
             // The width changes at once and only the height glides, like a drawer: resizing in both directions at every step lagged, most of all when the window
             // had been made bigger first and had to change its width to open the lyrics.
             BeginAnimation(WidthProperty,null);Width=target.Width;
-            BeginAnimation(TopProperty,new DoubleAnimation(Top,top,TimeSpan.FromMilliseconds(260)){EasingFunction=ease});
-            BeginAnimation(HeightProperty,grow);
+            // What has just changed inside (the lyrics appearing, or going) is laid out and drawn once first; the glide starts on the frame after, so it plays from
+            // its beginning instead of skipping ahead past a slow first frame.
+            UpdateLayout();
+            int motion=resizeMotion,frames=0;EventHandler begin=null;
+            begin=(s,e)=>
+            {
+                if(++frames<2)return;
+                CompositionTarget.Rendering-=begin;
+                if(motion!=resizeMotion||!animating)return;
+                BeginAnimation(TopProperty,new DoubleAnimation(Top,top,TimeSpan.FromMilliseconds(260)){EasingFunction=ease});
+                BeginAnimation(HeightProperty,grow);
+            };
+            CompositionTarget.Rendering+=begin;
         }
 
         // ---- Closing: the window closes at once, and a picture of it takes its place, shrinks a little toward its middle (to about 90%) and drops a few pixels while it
@@ -409,8 +422,8 @@ namespace Lucent
             {
                 if(started)return;started=true;
                 closeReal();
-                var quick=TimeSpan.FromMilliseconds(190);
-                var scale=new DoubleAnimation(1,.94,quick){EasingFunction=new SineEase {EasingMode=EasingMode.EaseOut}};
+                var quick=TimeSpan.FromMilliseconds(220);
+                var scale=new DoubleAnimation(1,.95,quick){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}};
                 shrink.BeginAnimation(ScaleTransform.ScaleXProperty,scale);
                 shrink.BeginAnimation(ScaleTransform.ScaleYProperty,scale.Clone());
                 // The fade runs the whole time, softly at both ends (an ease-in left it almost whole and then took it away in the last few frames).
@@ -460,8 +473,9 @@ namespace Lucent
             if(glide)
             {
                 Lyrics.Opacity=0;
-                Lyrics.BeginAnimation(OpacityProperty,new DoubleAnimation(0,1,TimeSpan.FromMilliseconds(220)){BeginTime=TimeSpan.FromMilliseconds(80),EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
-                lyricsRise.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(16,0,TimeSpan.FromMilliseconds(280)){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
+                // The lyrics stay unseen while the window opens (text that is not shown is not drawn, so every step of the glide is as cheap as when closing) and fade in as it arrives.
+                Lyrics.BeginAnimation(OpacityProperty,new DoubleAnimation(0,1,TimeSpan.FromMilliseconds(200)){BeginTime=TimeSpan.FromMilliseconds(240),EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
+                lyricsRise.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(12,0,TimeSpan.FromMilliseconds(220)){BeginTime=TimeSpan.FromMilliseconds(240),EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
             }
             else{Lyrics.BeginAnimation(OpacityProperty,null);Lyrics.Opacity=1;lyricsRise.BeginAnimation(TranslateTransform.YProperty,null);lyricsRise.Y=0;}
         }

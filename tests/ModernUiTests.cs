@@ -101,7 +101,7 @@ class ModernUiTests
    await (Task)Call(shell,"RemoveCustomBackground",managed,new Border());Check(File.Exists(source)&&!File.Exists(managed)&&prefs.BackgroundFile==""&&prefs.CustomBackgrounds.Count==0,"Removing custom GIF harmed original or failed to restore default");
    Call(shell,"ShowPage","Crosshair");var expander=All<Expander>((DependencyObject)pages["Crosshair"]).First(e=>Equals(e.Header,"Outline"));expander.IsExpanded=true;Check(All<TextBox>(expander).Count()==4,"Outline RGB and hex inputs missing");
    Call(shell,"SetStatus","Testing notification");Call(shell,"ShowPage","Video");Check(((UIElement)Field(shell,"statusCard")).Visibility==Visibility.Collapsed,"Navigation did not clear notification");
-   var notice=(FrameworkElement)Field(shell,"statusCard");Check(notice.VerticalAlignment==VerticalAlignment.Top&&notice.HorizontalAlignment==HorizontalAlignment.Center,"Notices must sit at the top, away from the player");
+   var notice=(FrameworkElement)Field(shell,"statusCard");Check(notice.VerticalAlignment==VerticalAlignment.Top&&notice.HorizontalAlignment==HorizontalAlignment.Right,"Notices must sit at the top right, away from the player");
    using(var fakeCover=new MemoryStream())
    {
     var player=new MediaPlayerWindow(shell,prefs,true){WindowStartupLocation=WindowStartupLocation.Manual,Left=-20000,Top=-20000};player.Show();player.SetTrack(new MediaTrack{Title="Test track",Artist="Test artist",Source="Fixture",Playing=true,CanPlay=true,CanPause=true,CanNext=true,CanPrevious=true,CanSeek=true,Duration=120,Position=30});
