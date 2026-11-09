@@ -93,7 +93,7 @@ namespace Lucent
                 UpdateHome();
             }
         }
-        // ---- The update window: a dimmed screen with one card that asks whether to update now.
+        // ---- The update window: a small panel at the top right, like the Recently played one, that asks whether to update now. The app stays usable around it.
         internal void ShowUpdatePopup()
         {
             if(updateInfo==null||closing||updatePopup!=null)return;
@@ -101,21 +101,21 @@ namespace Lucent
             if(!IsVisible||WindowState==WindowState.Minimized){updatePopupPending=true;return;}
             updatePopupPending=false;
             var info=updateInfo;
-            var layer=new Grid {Background=new SolidColorBrush(Color.FromArgb(176,0,0,0)),Focusable=true,Opacity=0};
+            var layer=new Grid {Background=null,Focusable=true,Opacity=0};
             var stack=new StackPanel();
-            var head=new DockPanel {Margin=new Thickness(0,0,0,16)};
-            var mark=Art.Logo(44);mark.Margin=new Thickness(0,0,16,0);mark.VerticalAlignment=VerticalAlignment.Center;DockPanel.SetDock(mark,Dock.Left);head.Children.Add(mark);
+            var head=new DockPanel {Margin=new Thickness(0,0,0,12)};
+            var mark=Art.Logo(34);mark.Margin=new Thickness(0,0,13,0);mark.VerticalAlignment=VerticalAlignment.Center;DockPanel.SetDock(mark,Dock.Left);head.Children.Add(mark);
             var titles=new StackPanel {VerticalAlignment=VerticalAlignment.Center};
-            titles.Children.Add(new TextBlock {Text="Update available",FontSize=22,FontWeight=FontWeights.Bold,Foreground=Brushes.White});
+            titles.Children.Add(new TextBlock {Text="Update available",FontSize=18,FontWeight=FontWeights.Bold,Foreground=Brushes.White});
             titles.Children.Add(new TextBlock {Text="Lucent "+Updates.Show(info.Latest)+" is ready. You have "+Design.Version+".",FontSize=13,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,3,0,0)});
             head.Children.Add(titles);stack.Children.Add(head);
             if(!string.IsNullOrWhiteSpace(info.Notes))
-                stack.Children.Add(new Border {Background=new SolidColorBrush(Color.FromRgb(36,36,38)),CornerRadius=new CornerRadius(12),Padding=new Thickness(14,10,14,10),Margin=new Thickness(0,0,0,16),MaxHeight=150,
+                stack.Children.Add(new Border {Background=new SolidColorBrush(Color.FromRgb(36,36,38)),CornerRadius=new CornerRadius(12),Padding=new Thickness(14,10,14,10),Margin=new Thickness(0,0,0,12),MaxHeight=110,
                     Child=new TextBlock {Text=info.Notes,FontSize=13,Foreground=Muted,TextWrapping=TextWrapping.Wrap}});
             var status=new TextBlock {FontSize=13,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,10),Visibility=Visibility.Collapsed};
             var bar=new ProgressBar {Height=8,Minimum=0,Maximum=100,Margin=new Thickness(0,0,0,14),Visibility=Visibility.Collapsed};
             stack.Children.Add(status);stack.Children.Add(bar);
-            stack.Children.Add(new TextBlock {Text="Lucent will close, then its setup opens. Your settings are kept.",FontSize=12,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,16)});
+            stack.Children.Add(new TextBlock {Text="Lucent will close, then its setup opens. Your settings are kept.",FontSize=12,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,14)});
             var buttons=new StackPanel {Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};
             var later=Action("Later",()=>HideUpdatePopup());
             var update=new Button {Content="Update now",Padding=new Thickness(14,10,14,10),Style=(Style)Resources["PrimaryAction"]};bool failed=false;
@@ -151,8 +151,8 @@ namespace Lucent
                 catch(Exception error){status.Text="Setup could not be opened: "+error.Message;update.IsEnabled=true;later.IsEnabled=true;return;}
                 ExitApp();
             };
-            var card=new Border {Width=470,Background=new SolidColorBrush(Color.FromRgb(28,28,30)),BorderBrush=new SolidColorBrush(Color.FromArgb(46,255,255,255)),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(20),Padding=new Thickness(28),
-                HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center,Child=stack,RenderTransformOrigin=new Point(.5,.5),RenderTransform=new ScaleTransform(.96,.96),
+            var card=new Border {Width=380,Background=new SolidColorBrush(Color.FromRgb(28,28,30)),BorderBrush=new SolidColorBrush(Color.FromArgb(46,255,255,255)),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(18),Padding=new Thickness(20),
+                HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(0,58,16,0),Child=stack,RenderTransformOrigin=new Point(1,0),RenderTransform=new ScaleTransform(.94,.94),
                 Effect=new System.Windows.Media.Effects.DropShadowEffect {BlurRadius=30,ShadowDepth=6,Opacity=.55,Color=Colors.Black}};
             layer.Children.Add(card);
             layer.KeyDown+=(s,e)=>{if(e.Key==Key.Escape&&later.IsEnabled){HideUpdatePopup();e.Handled=true;}};
@@ -162,8 +162,8 @@ namespace Lucent
             updatePopup=layer;
             Design.Animate(layer,OpacityProperty,0,1,180);
             var scale=(ScaleTransform)card.RenderTransform;
-            scale.BeginAnimation(ScaleTransform.ScaleXProperty,new DoubleAnimation(.96,1,TimeSpan.FromMilliseconds(220)){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
-            scale.BeginAnimation(ScaleTransform.ScaleYProperty,new DoubleAnimation(.96,1,TimeSpan.FromMilliseconds(220)){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty,new DoubleAnimation(.94,1,TimeSpan.FromMilliseconds(220)){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty,new DoubleAnimation(.94,1,TimeSpan.FromMilliseconds(220)){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
             layer.Focus();
         }
         internal void HideUpdatePopup()

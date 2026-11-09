@@ -238,10 +238,13 @@ namespace Lucent
     }    internal static class Design
     {
         // AssemblyInfo.cs is the one place the version is written; the manifest only mirrors it.
+        // Only for the pictures of the app (tests): a version to show in place of the real one.
+        internal static string VersionOverride;
         public static string Version
         {
             get
             {
+                if(!string.IsNullOrEmpty(VersionOverride))return VersionOverride;
                 var named=(System.Reflection.AssemblyInformationalVersionAttribute[])typeof(Design).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute),false);
                 return named.Length>0&&!string.IsNullOrEmpty(named[0].InformationalVersion)?named[0].InformationalVersion:Updates.Show(typeof(Design).Assembly.GetName().Version);
             }

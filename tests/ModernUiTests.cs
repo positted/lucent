@@ -267,12 +267,12 @@ class ModernUiTests
  }
  static async Task CheckBroom(Shell shell)
  {
-  // Cleaning swaps the label for text plus broom without resizing the button.
+  // Cleaning swaps the label for just the broom, grays the button out, and does not resize it.
   Call(shell,"ShowPage","Game Boost");shell.UpdateLayout();await Task.Delay(40);
   var button=Visuals<Button>((DependencyObject)Field(shell,"content")).First(b=>Equals(b.Content,"Clean RAM"));double width=button.ActualWidth,height=button.ActualHeight;object label=button.Content;
   var stop=(Action)Call(shell,"ShowMemoryCleanup",button);shell.UpdateLayout();
   Check(Math.Abs(button.ActualWidth-width)<.01&&Math.Abs(button.ActualHeight-height)<.01,"Clean button resized: "+width+"x"+height+" to "+button.ActualWidth+"x"+button.ActualHeight);
-  var busy=(StackPanel)button.Content;Check(busy.Children[0] is SmoothText&&busy.Children[1] is Canvas,"Broom should be to the right of Cleaning");
+  var busyPanel=button.Content as StackPanel;Check(busyPanel!=null&&busyPanel.Children.Count==1&&busyPanel.Children[0] is Canvas&&!button.IsEnabled,"While cleaning the button should show only the broom and be grayed out");
   // The broom sweeps while cleaning, and nothing keeps animating once it stops.
   var swing=Visuals<Canvas>(button).Select(c=>c.RenderTransform as RotateTransform).First(r=>r!=null);var puffs=Visuals<System.Windows.Shapes.Ellipse>(button).ToArray();
   Check(swing.HasAnimatedProperties&&puffs.Length==3&&puffs.All(p=>p.HasAnimatedProperties),"Broom is not animating");
@@ -386,7 +386,7 @@ class ModernUiTests
   Check(words.Contains("Vibrance")&&words.Contains("Eye Care")&&words.Contains("Color Blindness"),"The Color tab lost its controls");
   Check(!words.Contains("Manage profiles")&&!words.Contains("Game vision")&&!words.Any(w=>w.Contains("Manage profiles")||w.Contains("Open game vision")||w.Contains("Auto-switch")),"Profiles or Game vision are still on the Color tab");
   // The right side is no longer empty: one-click looks and eye break reminders.
-  Check(words.Contains("Quick looks")&&words.Contains("Eye breaks"),"The Color tab right side is missing Quick looks or Eye breaks: "+string.Join(" | ",words.Take(40)));
+  Check(words.Contains("Quick looks")&&words.Contains("Eye Care")&&words.Contains("Color Blindness")&&!words.Contains("Eye breaks"),"The Color tab is missing Quick looks, Eye Care or Color Blindness, or still has Eye breaks: "+string.Join(" | ",words.Take(40)));
   var look=(Look)Field(shell,"current");var keptColor=look.Copy();
   Func<string,Button> preset=n=>Visuals<Button>(page).First(b=>Equals(b.Tag,n));
   preset("Night").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(Math.Abs(look.Red-62)<.01&&Math.Abs(look.Dim-35)<.01&&Math.Abs(look.Saturation-100)<.01,"The Night look did not set the sliders: "+look.Red+", "+look.Dim);
@@ -757,13 +757,13 @@ class ModernUiTests
   prefsPc.PcRings="CPU,RAM";Call(shell,"ShowSystemStats",new SystemSnapshot{Cpu=10,CpuTemp=55,RamUsedGb=4,RamTotalGb=16,Gpu=5,GpuTemp=40,VramUsedGb=1,VramTotalGb=8,GpuName="Test"});
   Check(((FrameworkElement)tiles["CPU"]).Visibility==Visibility.Visible&&((FrameworkElement)tiles["RAM"]).Visibility==Visibility.Visible&&((FrameworkElement)tiles["CPU temp"]).Visibility==Visibility.Collapsed&&((FrameworkElement)tiles["GPU"]).Visibility==Visibility.Collapsed&&((FrameworkElement)tiles["GPU temp"]).Visibility==Visibility.Collapsed,"Home shows circles that were not chosen");
   Call(shell,"SelectSettingsCategory","Appearance");shell.UpdateLayout();
-  var ringSwitch=Visuals<CheckBox>(shell).First(c=>System.Windows.Automation.AutomationProperties.GetName(c)=="GPU load");ringSwitch.IsChecked=true;ringSwitch.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+  var ringSwitch=Visuals<CheckBox>(shell).FirstOrDefault(c=>System.Windows.Automation.AutomationProperties.GetName(c)=="GPU load");Check(ringSwitch!=null,"No GPU load switch found (settings content: "+((ContentControl)Field(shell,"settingsContent")).Content+", category "+(string)Field(shell,"settingsCategory")+", overview "+(bool)Field(shell,"settingsOverviewShown")+")");ringSwitch.IsChecked=true;ringSwitch.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
   Check(prefsPc.PcRings=="CPU,RAM,GPU"&&((FrameworkElement)tiles["GPU"]).Visibility==Visibility.Visible,"Choosing a circle in Settings did not show it: "+prefsPc.PcRings);
   Check(!Visuals<Button>(shell).Any(b=>Equals(b.Content,"Start HWiNFO")),"Lucent should not depend on another monitoring app");
   // Fahrenheit is a choice; Celsius is the default, and the text is just the number and a letter.
   prefsPc.PcRings="CPU temp,GPU temp";prefsPc.Fahrenheit=true;Call(shell,"ShowSystemStats",new SystemSnapshot{Cpu=10,CpuTemp=55,RamUsedGb=4,RamTotalGb=16,Gpu=5,GpuTemp=71,VramUsedGb=1,VramTotalGb=8,GpuName="Test"});
   Check(cpuTemp.Reading=="131\u00B0F"&&gpuTemp.Reading=="160\u00B0F"&&Math.Abs(cpuTemp.Fraction-.55)<.001,"Fahrenheit should show 131°F and 160°F: "+cpuTemp.Reading+" "+gpuTemp.Reading);
-  var fahrenheitSwitch=Visuals<CheckBox>(shell).First(c=>System.Windows.Automation.AutomationProperties.GetName(c)=="Temperatures in Fahrenheit");fahrenheitSwitch.IsChecked=false;fahrenheitSwitch.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+  var fahrenheitSwitch=Visuals<CheckBox>(shell).FirstOrDefault(c=>System.Windows.Automation.AutomationProperties.GetName(c)=="Temperatures in Fahrenheit");Check(fahrenheitSwitch!=null,"No Fahrenheit switch found");fahrenheitSwitch.IsChecked=false;fahrenheitSwitch.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
   Check(!prefsPc.Fahrenheit&&cpuTemp.Reading=="55\u00B0C","Turning Fahrenheit off should go back to Celsius: "+cpuTemp.Reading);
   prefsPc.Fahrenheit=false;prefsPc.PcRings="CPU,RAM,GPU";
   prefsPc.PcRings="";Call(shell,"ShowSystemStats",(object)null);Check(((FrameworkElement)Field(shell,"pcCard")).Visibility==Visibility.Collapsed,"Home should hide the card when no circle is chosen");
@@ -790,10 +790,7 @@ class ModernUiTests
   accentField.SetValue(shell,Color.FromRgb(46,46,48));Call(shell,"SetStatus","Hello again");Check(((SolidColorBrush)card.Background).Color.R<40,"With nothing playing the notice should stay plain dark");
   accentField.SetValue(shell,keptAccent);prefs.AdaptiveTheme=keptAdaptiveNotice;
   Call(shell,"ShowPage","Video");shell.UpdateLayout();
-  var testReminder=Visuals<Button>((DependencyObject)Field(shell,"content")).First(b=>Equals(b.Content,"Test the reminder"));testReminder.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-  Check(card.Visibility==Visibility.Visible&&((SmoothText)Field(shell,"statusTitle")).Text=="Time for an eye break"&&statusClock.Interval==TimeSpan.FromSeconds(6),"Test the reminder should show the reminder");
   Call(shell,"HideStatus");
-  Check(((System.Windows.Shapes.Path)Design.Icon("EyeCare",16).Child).Data.ToString()!=((System.Windows.Shapes.Path)Design.Icon("EyeBreak",16).Child).Data.ToString()&&((System.Windows.Shapes.Path)Design.Icon("EyeBreak",16).Child).Data.ToString()!=((System.Windows.Shapes.Path)Design.Icon("Eye",16).Child).Data.ToString(),"Eye Care and Eye breaks should have their own icons");
   // Performance mode stops what is only for show.
   var perfPaletteField=typeof(Shell).GetField("paletteBitmap",BindingFlags.Instance|BindingFlags.NonPublic);var perfTrackField=typeof(Shell).GetField("ambientTrack",BindingFlags.Instance|BindingFlags.NonPublic);
   var keptPerfBitmap=perfPaletteField.GetValue(shell);var keptPerfTrack=perfTrackField.GetValue(shell);prefs.AdaptiveTheme=true;

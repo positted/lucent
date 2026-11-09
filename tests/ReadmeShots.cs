@@ -83,6 +83,7 @@ class ReadmeShots
   // A plain dark window across the display, behind everything we show.
   var stage=new Window{WindowStyle=WindowStyle.None,ResizeMode=ResizeMode.NoResize,ShowInTaskbar=false,Background=new System.Windows.Media.SolidColorBrush(Environment.GetEnvironmentVariable("LUCENT_STAGE")=="white"?System.Windows.Media.Color.FromRgb(240,240,240):System.Windows.Media.Color.FromRgb(0,0,0)),WindowStartupLocation=WindowStartupLocation.Manual,Left=screen.Bounds.Left/scale,Top=screen.Bounds.Top/scale,Width=screen.Bounds.Width/scale,Height=screen.Bounds.Height/scale};
   stage.Show();
+  Lucent.Design.VersionOverride="1.1126";   // the pictures show the release name, not a build number (set before the window builds About)
   var shell=new Shell(true){WindowStartupLocation=WindowStartupLocation.Manual,Left=screen.Bounds.Left/scale+90,Top=screen.Bounds.Top/scale+60,Width=1180,Height=780};
   shell.Show();shell.Activate();
   var prefs=(Preferences)F(shell,"preferences").GetValue(shell);
@@ -109,27 +110,42 @@ class ReadmeShots
   Call(shell,"SetPlayerBarOpen",true);
   Call(shell,"ShowPage","Home");
   await Task.Delay(800);
+  // Made-up numbers for Your PC, so the rings show percentages and temperatures in the pictures (nothing is measured here).
+  shell.ShowSystemStats(new SystemSnapshot{Cpu=37,CpuTemp=58,RamUsedGb=19.8,RamTotalGb=31.9,Gpu=64,GpuTemp=66,VramUsedGb=6.1,VramTotalGb=12,GpuName="Fixture"});
   // Each cover on Home: the colors follow the cover.
-  foreach(var file in covers)
+  bool quick=Environment.GetEnvironmentVariable("LUCENT_ONLY")=="quick";
+  foreach(var file in (quick?covers.Take(0):covers))
   {
    play(file);await Task.Delay(2600);
    var name=System.Text.RegularExpressions.Regex.Replace(Path.GetFileNameWithoutExtension(file).Replace("__","-").ToLowerInvariant(),"[^a-z0-9]+","-").Trim('-');
    Shot(shell,Path.Combine(output,"home-"+name+".png"));
   }
+  if(Environment.GetEnvironmentVariable("LUCENT_ONLY")=="home"){shell.Close();stage.Close();Console.WriteLine("PASS: home pictures written to "+output);return;}
   // The other pages, with the first cover.
   play(covers[0]);await Task.Delay(1800);
   var pages=(IDictionary)F(shell,"pages").GetValue(shell);
   Console.WriteLine("pages: "+string.Join(", ",pages.Keys.Cast<object>().Select(k=>k.ToString())));
-  foreach(string page in new[]{"Resolution","Video","Crosshair"})
+  foreach(string page in (quick?new string[0]:new[]{"Resolution","Video","Crosshair"}))
   {
    if(!pages.Contains(page))continue;
    Call(shell,"ShowPage",page);await Task.Delay(1400);
    Shot(shell,Path.Combine(output,"page-"+page.ToLowerInvariant()+".png"));
   }
   Call(shell,"ShowPage","Home");await Task.Delay(900);
+  // Color with vibrance at its 300% maximum (the headline feature), and the Boost page.
+  Call(shell,"ShowPage","Video");await Task.Delay(1200);
+  ((System.Windows.Controls.Slider)((IDictionary)F(shell,"sliders").GetValue(shell))["Vibrance"]).Value=300;await Task.Delay(1200);
+  Shot(shell,Path.Combine(output,"color-300.png"));
+  ((System.Windows.Controls.Slider)((IDictionary)F(shell,"sliders").GetValue(shell))["Vibrance"]).Value=100;
+  Call(shell,"ShowPage","Game Boost");await Task.Delay(1400);Shot(shell,Path.Combine(output,"boost.png"));
+  Call(shell,"ShowPage","Home");await Task.Delay(600);
   // The big player.
   play(covers[Math.Min(1,covers.Count-1)]);await Task.Delay(1200);
-  Call(shell,"SetBigPlayerOpen",true);await Task.Delay(3200);
+  prefs.ArtistPictures=true;   // the artist's picture beside the name (looked up on Deezer, as the app does when this is on)
+  Call(shell,"SetBigPlayerOpen",true);await Task.Delay(1500);
+  // The artist's picture, fetched from Deezer the way the app does when it is switched on (a test-mode window does not look it up by itself).
+  {var bigNow=(BigPlayerView)F(shell,"bigPlayerView").GetValue(shell);ArtistPictures.Enabled=()=>true;bigNow.ArtistPicture.Show(load(covers[Math.Min(1,covers.Count-1)]).Item1.Artist,true);}
+  await Task.Delay(4500);
   Shot(shell,Path.Combine(output,"big-player.png"));
   // The same player with lyrics: made-up demo lines in the lyrics cache (nothing is looked up online, and no real song's words are shown).
   var lyricsCache=(IDictionary)typeof(LyricsService).GetField("cache",BindingFlags.Static|BindingFlags.NonPublic).GetValue(null);
