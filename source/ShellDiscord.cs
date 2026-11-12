@@ -91,6 +91,20 @@ namespace Lucent
                     if(profile!=null)return new DiscordGame {Name=profile.Name,Executable=profile.Executable};
                     var known=DiscordGameIcons.FindRunning(namesProbe!=null?namesProbe():RunningProgramNames(),namesProbe!=null?(Func<string,string>)null:ProgramPath);
                     if(known!=null)return new DiscordGame {Name=known.Name,Icon=known.Icon};
+                    // Not in Discord's list (a small or new game, like Rob Run): any program running from the folder of a game the launchers have installed
+                    // (Steam, Epic, GOG, Ubisoft, EA, Battle.net, Riot, Xbox) is that game.
+                    if(namesProbe==null&&probe==null)
+                    {
+                        var installed=InstalledGameRunning();
+                        if(installed!=null)
+                        {
+                            var listed=DiscordGameIcons.Lookup(null,installed.Name);
+                            // A name all in capitals (ROB RUN) is shown the way its folder writes it (Rob Run) when they are the same words.
+                            string shown=installed.Name,leaf=System.IO.Path.GetFileName(InstalledGames.Folder(installed.Executable)??"");
+                            if(shown==shown.ToUpperInvariant()&&leaf!=shown&&string.Equals(leaf,shown,StringComparison.OrdinalIgnoreCase))shown=leaf;
+                            return new DiscordGame {Name=shown,Executable=installed.Executable,Icon=listed==null?null:listed.Icon};
+                        }
+                    }
                     // No game: the song, with its cover from Deezer's public search.
                     if(playing)return new DiscordGame {Song=new DiscordSong {Title=track.Title,Artist=track.Artist,Cover=SongCovers.Find(track.Title,track.Artist),Position=track.Position,Duration=track.Duration}};
                     return null;
@@ -100,6 +114,35 @@ namespace Lucent
             catch(Exception){}
             finally{readingDiscord=false;}
         }        // Sends the status when it differs from what Discord already shows (a game starting or ending, a changed option). No game means no status.
+        // The installed games and the folders they live in, read again every ten minutes (on the Discord thread, never the window's).
+        static List<KeyValuePair<string,LibraryGame>> installedFolders;static DateTime installedAt;
+        static LibraryGame InstalledGameRunning()
+        {
+            if(installedFolders==null||DateTime.UtcNow-installedAt>TimeSpan.FromMinutes(10))
+            {
+                var list=new List<KeyValuePair<string,LibraryGame>>();
+                try{foreach(var game in GameLibrary.Scan()){string folder=InstalledGames.Folder(game.Executable);if(folder!=null)list.Add(new KeyValuePair<string,LibraryGame>(folder,game));}}catch(Exception){}
+                // The deepest folder first, so a game inside another game's folder is named for itself.
+                installedFolders=list.OrderByDescending(e=>e.Key.Length).ToList();installedAt=DateTime.UtcNow;
+            }
+            if(installedFolders.Count==0)return null;
+            return InstalledGames.Match(installedFolders,RunningProgramPaths());
+        }
+        static IEnumerable<string> RunningProgramPaths()
+        {
+            System.Diagnostics.Process[] all;
+            try{all=System.Diagnostics.Process.GetProcesses();}catch(Exception){yield break;}
+            try
+            {
+                foreach(var process in all.OrderByDescending(p=>{try{return p.Id;}catch(Exception){return 0;}}))
+                {
+                    string path=null;
+                    try{if(process.Id>4)path=ResolutionSwitcher.ProcessIdentity.ImagePath(process.Id);}catch(Exception){}
+                    if(path!=null)yield return path;
+                }
+            }
+            finally{foreach(var process in all)process.Dispose();}
+        }
         // Where a running program is, from its name (null when Windows will not say). Only the path is read, never the program itself.
         static string ProgramPath(string name)
         {
@@ -202,6 +245,37 @@ namespace Lucent
             page.Children.Add(new TextBlock {Text="Nothing is shown on Discord unless a game is running (like \u201CPlaying Rust with Lucent\u201D), a song is playing (\u201CListening to Lucent\u201D) or, if Show Idle is on, nothing is happening (\u201CIdle\u201D). Lucent only checks the names of running programs to know a game is open, and never opens the game.",FontSize=12,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(2,0,0,10)});
             ShowDiscordStatus();
             if(preferences.DiscordOn)ApplyDiscord();
+        }
+    }
+    // Recognising a game Discord does not list: a program running from the folder of a game the launchers installed.
+    internal static class InstalledGames
+    {
+        static readonly System.Text.RegularExpressions.Regex NotTheGame=new System.Text.RegularExpressions.Regex(@"(unins|crash|report|redist|setup|installer|updater|prereq|easyanticheat|battleye|eac|launcher_helper|cefprocess|webhelper)",System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        // The folder a game is installed in: for Steam the game's own folder under steamapps\common (its program may sit deeper, like Binaries\Win64), otherwise the program's folder.
+        internal static string Folder(string executable)
+        {
+            if(string.IsNullOrEmpty(executable))return null;
+            string full;try{full=System.IO.Path.GetFullPath(executable);}catch(Exception){return null;}
+            const string common=@"\steamapps\common\";
+            int at=full.IndexOf(common,StringComparison.OrdinalIgnoreCase);
+            if(at>=0){int end=full.IndexOf('\\',at+common.Length);return end<0?null:full.Substring(0,end);}
+            string folder=System.IO.Path.GetDirectoryName(full);
+            // A program straight in a drive or in Program Files is not a game's own folder.
+            if(folder==null||folder.TrimEnd('\\').Count(c=>c=='\\')<2)return null;
+            foreach(var shared in new[]{Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),Environment.GetFolderPath(Environment.SpecialFolder.Windows)})
+                if(!string.IsNullOrEmpty(shared)&&string.Equals(folder.TrimEnd('\\'),shared.TrimEnd('\\'),StringComparison.OrdinalIgnoreCase))return null;
+            return folder;
+        }
+        // Which installed game has a program running from its folder (the first one found), or null.
+        internal static LibraryGame Match(IEnumerable<KeyValuePair<string,LibraryGame>> folders,IEnumerable<string> runningPaths)
+        {
+            foreach(string path in runningPaths)
+            {
+                if(string.IsNullOrEmpty(path)||NotTheGame.IsMatch(System.IO.Path.GetFileName(path)))continue;
+                foreach(var entry in folders)
+                    if(path.StartsWith(entry.Key+"\\",StringComparison.OrdinalIgnoreCase))return entry.Value;
+            }
+            return null;
         }
     }
 }

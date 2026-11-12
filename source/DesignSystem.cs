@@ -36,7 +36,12 @@ namespace Lucent
         // and their line breaks stay the same, that child is not touched, so nothing is drawn again: redrawing every stretched label at each step of a resize was most of its cost.
         readonly DrawingVisual ink=new DrawingVisual();
         string inkKey;Brush inkBrush;
-        public SmoothText(){ink.CacheMode=Rasterized;AddVisualChild(ink);}
+        public SmoothText()
+        {
+            ink.CacheMode=Rasterized;AddVisualChild(ink);
+            // Text that is not on screen is not outlined (see OnRender); it is drawn when it shows.
+            IsVisibleChanged+=(s,e)=>{if((bool)e.NewValue&&inkKey==null&&!string.IsNullOrEmpty(Text))InvalidateVisual();};
+        }
         protected override int VisualChildrenCount {get{return 1;}}
         protected override Visual GetVisualChild(int index){return ink;}
         // Text is kept as a small picture so a page opens quickly, but a picture drawn at one size goes soft when it is scaled up. A window that
@@ -95,6 +100,9 @@ namespace Lucent
             string key=MeasureKey(text,width)+"\u0001"+(int)FlowDirection;Geometry outline;
             var brush=Foreground;
             if(key==inkKey&&ReferenceEquals(brush,inkBrush))return;
+            // Hidden text (a lyric line far from the one being sung, a page not shown) is outlined only once it shows: a song's lyrics used to outline
+            // every line at once when they arrived, which held the window up for a moment.
+            if(!IsVisible){inkKey=null;return;}
             if(!Outlines.TryGetValue(key,out outline))
             {
                 outline=Format(text,width).BuildGeometry(new Point());

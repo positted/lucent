@@ -138,7 +138,7 @@ namespace Lucent
                 {
                     warmed=true;
                     var warm=new DispatcherTimer {Interval=TimeSpan.FromMilliseconds(2500)};
-                    warm.Tick+=(a,b)=>{warm.Stop();if(closing||!IsVisible||leaving)return;WarmText();WarmResize();WarmBigPlayer();};
+                    warm.Tick+=(a,b)=>{warm.Stop();if(closing||!IsVisible||leaving)return;WarmText();WarmResize();WarmBigPlayer();ghost.Prepare();};
                     warm.Start();
                 }
                 if(IsVisible&&animateRestore&&WindowState!=WindowState.Minimized){animateRestore=false;GrowBack();}

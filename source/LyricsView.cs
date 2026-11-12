@@ -233,7 +233,7 @@ namespace Lucent
             foreach(var line in lines)
             {
                 var label=new TextBlock {Text=line.Text.Length==0?" ":line.Text,FontSize=lineSize,FontWeight=FontWeights.Bold,TextWrapping=TextWrapping.Wrap,Foreground=Brushes.White,FontFamily=Design.DisplayFont,TextAlignment=centered?TextAlignment.Center:TextAlignment.Left};
-                var item=new Border {Background=Brushes.Transparent,Padding=new Thickness(centered?14:0,Math.Max(8,lineSize*.5),centered?14:28,Math.Max(8,lineSize*.5)),Opacity=synced?Dim:.85,Child=label,Cursor=synced?Cursors.Hand:Cursors.Arrow};
+                var item=new Border {Background=Brushes.Transparent,Padding=new Thickness(centered?14:0,Math.Max(8,lineSize*.5),centered?14:28,Math.Max(8,lineSize*.5)),Opacity=synced?Dim:.85,Child=label,Visibility=Visibility.Hidden,Cursor=synced?Cursors.Hand:Cursors.Arrow};
                 double time=line.Time;
                 if(synced)
                 {
@@ -251,6 +251,7 @@ namespace Lucent
             UpdateLayout();
             Refit();
         }
+        // (Lines start hidden and keep their room; Follow shows the ones around the place the view rests, so only those are drawn.)
         // Whether a line is shown fully lit: the one being sung, or, before the song reaches the first line, the first one.
         bool Lit(int index){return index>=0&&(index==active||(active<0&&index==0));}
         // The line being sung at this moment. A little early, so a line is lit as its first word starts.

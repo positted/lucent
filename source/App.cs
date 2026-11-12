@@ -396,8 +396,16 @@ namespace Lucent
         void OnSessionEnding(object sender,Microsoft.Win32.SessionEndingEventArgs e){exiting=true;}
         void HideToTray()
         {
-            // The window shrinks toward its corner and fades, and then it is hidden.
-            AnimateAway(()=>Hide());
+            // The window is gone from the screen on the click; a picture of it, drawn by Windows, shrinks a little and fades (see WindowGhost).
+            // Opening from the tray is the same motion backward (see BringToFront).
+            int going=++trayMotion;
+            if(TestMode||!IsVisible||WindowState==WindowState.Minimized){ghost.Stop();Hide();}
+            else
+            {
+                bool played=false;
+                try{played=ghost.Play(this,true,()=>{if(going==trayMotion)WindowGhost.Cloak(this,true);},()=>{if(going!=trayMotion)return;Hide();WindowGhost.Cloak(this,false);});}catch(Exception){played=false;}
+                if(!played)Hide();
+            }
             if(preferences.TrayHintShown||tray==null)return;
             preferences.TrayHintShown=true;SaveSoon();
             try{tray.ShowBalloonTip(5000,"Lucent is still running","It is in the system tray. Click the icon to open it, or right-click it to exit.",Forms.ToolTipIcon.Info);}catch(Exception){}
@@ -406,17 +414,43 @@ namespace Lucent
         // From the tray the window is made invisible before it is shown, so it does not appear whole for a moment before it starts to grow.
         // Windows animates the window coming back. Before it shows, the song is read again and its colors are put in place at once, so the window does not
         // appear with the colors of the song that was playing when it was hidden and then change.
-        bool comingBack;
+        bool comingBack;int trayMotion;
+        readonly WindowGhost ghost=new WindowGhost();
         async void BringToFront()
         {
             if(comingBack)return;
+            trayMotion++;
             if(!TestMode&&(!IsVisible||WindowState==WindowState.Minimized))
             {
                 comingBack=true;
                 try{await RefreshColorsBeforeShowing();}catch(Exception){}
                 finally{comingBack=false;}
             }
-            Show();WindowState=WindowState.Normal;Activate();
+            // From the tray the window is shown hidden from the screen (cloaked), and once it has drawn itself its picture grows into place and fades in;
+            // then the real window takes over, exactly where the picture ends.
+            bool fromTray=!IsVisible||ghost.Moving;
+            int coming=++trayMotion;
+            ghost.Stop();
+            if(fromTray&&!TestMode)
+            {
+                WindowGhost.Cloak(this,true);
+                Show();if(WindowState==WindowState.Minimized)WindowState=WindowState.Normal;Activate();
+                int frames=0;EventHandler drawn=null;
+                drawn=(s,e)=>
+                {
+                    if(++frames<1)return;
+                    CompositionTarget.Rendering-=drawn;
+                    if(coming!=trayMotion)return;
+                    bool played=false;
+                    try{played=ghost.Play(this,false,null,()=>{if(coming==trayMotion)WindowGhost.Cloak(this,false);});}catch(Exception){played=false;}
+                    if(!played)WindowGhost.Cloak(this,false);
+                };
+                CompositionTarget.Rendering+=drawn;
+                return;
+            }
+            Show();
+            if(WindowState==WindowState.Minimized)WindowState=WindowState.Normal;
+            Activate();
         }
         internal static string ActivationSignal="Local\\Lucent.Activate";
         EventWaitHandle activationSignal;RegisteredWaitHandle activationWait;

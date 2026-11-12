@@ -256,6 +256,18 @@ internal static class LogicTests
         Check(plain!=null&&plain.Name=="Plain Game","A game listed without a folder should be recognised wherever it is");
         DiscordGameIcons.Reset();
         Console.WriteLine("PASS: a program that shares a file name with a game (gh.exe and Green Hell) is only taken for the game when it runs from the game's folder.");
+        {
+            // Games Discord does not list (Rob Run): a program running from an installed game's folder is that game.
+            Check(InstalledGames.Folder(@"D:\SteamLibrary\steamapps\common\Rob Run\Rob Run.exe")==@"D:\SteamLibrary\steamapps\common\Rob Run","Steam game folder");
+            Check(InstalledGames.Folder(@"C:\Steam\steamapps\common\Big Game\Binaries\Win64\Big.exe")==@"C:\Steam\steamapps\common\Big Game","A Steam game's own folder, not where its program sits");
+            Check(InstalledGames.Folder(@"C:\Program Files\tool.exe")==null&&InstalledGames.Folder(@"C:\tool.exe")==null,"A shared folder is not a game's folder");
+            var folders=new[]{new System.Collections.Generic.KeyValuePair<string,LibraryGame>(@"D:\SteamLibrary\steamapps\common\Rob Run",new LibraryGame {Name="Rob Run"})};
+            var hit=InstalledGames.Match(folders,new[]{@"C:\Windows\explorer.exe",@"D:\SteamLibrary\steamapps\common\Rob Run\Rob Run.exe"});
+            Check(hit!=null&&hit.Name=="Rob Run","Rob Run running from its folder was not recognised");
+            Check(InstalledGames.Match(folders,new[]{@"D:\SteamLibrary\steamapps\common\Rob Run\UnityCrashHandler64.exe"})==null,"A crash handler is not the game");
+            Check(InstalledGames.Match(folders,new[]{@"D:\SteamLibrary\steamapps\common\Rob Run Two\x.exe"})==null,"A folder that only starts with the same name is another game");
+            Console.WriteLine("PASS: games Discord does not list (like Rob Run) are recognised by running from an installed game's folder; helpers and look-alike folders are not.");
+        }
     }
     static void DiscordChecks()
     {

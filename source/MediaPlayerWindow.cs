@@ -25,7 +25,8 @@ namespace Lucent
         internal readonly PlayerCore Core;
         internal readonly FlowingBackdrop Backdrop=FlowingBackdrop.ForPlayers();
         internal readonly VolumeControl Volume;
-        internal readonly LyricsView Lyrics=new LyricsView {Visibility=Visibility.Collapsed};
+        // Closed, the lyrics are hidden in a row of no height but stay laid out at the window's width, so opening them only has to draw them.
+        internal readonly LyricsView Lyrics=new LyricsView {Visibility=Visibility.Hidden};
         readonly Preferences preferences;
         readonly bool testMode;
         readonly ScaleTransform scale=new ScaleTransform(1,1);
@@ -44,6 +45,7 @@ namespace Lucent
         Button lyricsButton;
         Grid lyricsFace;
         string lyricsSong;
+        bool lyricsPending;Action lyricsArrived;
         int lyricsToken,shownElapsed=-1,shownLength=-1;
         bool lyricsOn,animating,faded;
         bool sizingByHand;
@@ -349,6 +351,8 @@ namespace Lucent
                 animating=false;
                 OnSized();
                 Lyrics.Thaw();
+                // Lyrics that arrived while the window was moving are put in now, so laying them out did not hold up a step of the glide.
+                var arrived=lyricsArrived;lyricsArrived=null;if(arrived!=null)arrived();
                 if(after!=null)after();
             };
             if(!animate||!IsVisible||testMode){finish();return;}
@@ -439,9 +443,9 @@ namespace Lucent
         {
             lyricsOn=!lyricsOn;preferences.ShowLyrics=lyricsOn;Changed();
             ShowLyricsButton();
-            lyricsSong=null;
-            if(lyricsOn){ShowLyricsView(true);LoadLyrics();}
-            else{lyricsToken++;Lyrics.Clear();HideLyricsView(true);}
+            // The lyrics of the song are kept while they are closed, so opening them again for the same song builds nothing. Only a search still on its way is dropped.
+            if(lyricsOn){ShowLyricsView(true);LoadLyrics();Lyrics.Update(Core.progressValue);}
+            else{if(lyricsPending){lyricsToken++;lyricsSong=null;lyricsPending=false;lyricsArrived=null;}HideLyricsView(true);}
         }
         // The lyrics take the room between the title and the progress bar; the window grows to the size this view last had.
         // The lyrics open and close without resizing the window a step at a time (every step re-laid-out and redrew the whole window, which is what stuttered):
@@ -463,7 +467,7 @@ namespace Lucent
             {
                 // The window starts to open on the click itself, empty: laying out and drawing the lyrics is the slow part (it used to hold the click up for a moment),
                 // so they are only brought in once the window has arrived, and fade in there. The glide itself then draws no text at all.
-                Lyrics.Visibility=Visibility.Collapsed;
+                Lyrics.Visibility=Visibility.Hidden;
                 ResizeTo(target,true,()=>
                 {
                     if(motion!=lyricsMotion||!lyricsOn)return;
@@ -486,7 +490,7 @@ namespace Lucent
             {
                 if(motion!=lyricsMotion||lyricsOn)return;
                 lyricsRow.Height=new GridLength(0);
-                Lyrics.Visibility=Visibility.Collapsed;
+                Lyrics.Visibility=Visibility.Hidden;
                 // With the lyrics already faded away, the window folds back up to its small size.
                 double keep=ActualWidth>0?ActualWidth:Width;
                 ResizeTo(new Size(Math.Round(keep),Math.Round(CompactHeight*ScaleFor(keep))),animate&&IsVisible&&!testMode);
@@ -522,7 +526,7 @@ namespace Lucent
             string song=track.Source+"|"+track.Title+"|"+track.Artist;
             if(song==lyricsSong)return;
             lyricsSong=song;
-            int token=++lyricsToken;
+            int token=++lyricsToken;lyricsPending=true;lyricsArrived=null;
             Lyrics.ShowMessage("Looking for lyrics…");
             if(testMode)return;
             string title=track.Title,artist=track.Artist;double length=track.Duration;
@@ -532,8 +536,9 @@ namespace Lucent
                 Dispatcher.BeginInvoke(new Action(()=>
                 {
                     if(token!=lyricsToken||!lyricsOn)return;
-                    Lyrics.SetLyrics(result);
-                    Lyrics.Update(Core.progressValue);
+                    lyricsPending=false;
+                    Action put=()=>{if(token!=lyricsToken)return;Lyrics.SetLyrics(result);Lyrics.Update(Core.progressValue);};
+                    if(animating)lyricsArrived=put;else put();
                 }));
             });
         }

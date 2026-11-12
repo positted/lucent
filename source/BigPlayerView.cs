@@ -257,30 +257,47 @@ namespace Lucent
         Rect? AimAtCover()
         {
             Rect? target=CoverTarget==null?(Rect?)null:CoverTarget();
-            if(target==null||ActualWidth<=0||ActualHeight<=0){RenderTransformOrigin=new Point(.07,.96);return null;}
+            // Collapsed, it has no size of its own yet; it fills its parent, so that size is the same.
+            var parent=VisualTreeHelper.GetParent(this) as FrameworkElement;
+            double width=ActualWidth>0?ActualWidth:parent==null?0:parent.ActualWidth,height=ActualHeight>0?ActualHeight:parent==null?0:parent.ActualHeight;
+            if(target==null||width<=0||height<=0){RenderTransformOrigin=new Point(.07,.96);return null;}
             var cover=target.Value;
-            RenderTransformOrigin=new Point((cover.X+cover.Width/2)/ActualWidth,(cover.Y+cover.Height/2)/ActualHeight);
+            RenderTransformOrigin=new Point((cover.X+cover.Width/2)/width,(cover.Y+cover.Height/2)/height);
+            sizeForAim=width;
             return target;
         }
+        double sizeForAim;
         internal async void SetOpen(bool show)
         {
             if(show==open)return;
             open=show;
             // While it opens or closes it is moved as one picture, and its drifting colors rest: drawing everything again at every step (the cover's soft shadow,
             // the lyrics, the colors) made it lag.
-            if(!show){CacheMode=new BitmapCache();Backdrop.Hold(true);}else{CacheMode=null;Backdrop.Hold(false);}
+            CacheMode=new BitmapCache();Backdrop.Hold(true);
             if(show)
             {
                 Visibility=Visibility.Visible;
                 RefreshPerformance();
                 ApplyLayout(false);
-                AimAtCover();
+                var from=AimAtCover();
+                if(from!=null)
+                {
+                    // The exact reverse of closing: the player grows out of the cover on the player bar, from that cover's size, and fades in as it leaves it.
+                    double small=Math.Max(.03,Math.Min(.2,from.Value.Width/sizeForAim));
+                    double start=grow.ScaleX<1&&Opacity>0?grow.ScaleX:small;
+                    BeginAnimation(OpacityProperty,new DoubleAnimation(Opacity,1,TimeSpan.FromMilliseconds(150)));
+                    slide.BeginAnimation(TranslateTransform.YProperty,null);slide.Y=0;
+                    var growOut=new DoubleAnimation(start,1,TimeSpan.FromMilliseconds(360)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseInOut}};
+                    grow.BeginAnimation(ScaleTransform.ScaleXProperty,growOut);grow.BeginAnimation(ScaleTransform.ScaleYProperty,growOut);
+                    SettleOpen(420);
+                    await Core.Start();
+                    return;
+                }
                 Design.Animate(this,OpacityProperty,Opacity,1,150);
                 slide.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(22,0,TimeSpan.FromMilliseconds(320)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}});
                 var swell=new DoubleAnimation(.16,1,TimeSpan.FromMilliseconds(520)){EasingFunction=new BackEase{EasingMode=EasingMode.EaseOut,Amplitude=.16}};
                 grow.BeginAnimation(ScaleTransform.ScaleXProperty,swell);grow.BeginAnimation(ScaleTransform.ScaleYProperty,swell);
-                if(transitionSettle==null){transitionSettle=new System.Windows.Threading.DispatcherTimer {Interval=TimeSpan.FromMilliseconds(600)};transitionSettle.Tick+=(s,e)=>{transitionSettle.Stop();if(open){CacheMode=null;Backdrop.Hold(false);}};}
-                transitionSettle.Stop();transitionSettle.Start();
+                SettleOpen(600);
                 await Core.Start();
                 return;
             }
@@ -304,6 +321,12 @@ namespace Lucent
             slide.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(0,14,TimeSpan.FromMilliseconds(170)));
             var shrink=new DoubleAnimation(grow.ScaleX,.16,TimeSpan.FromMilliseconds(320)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseIn}};
             grow.BeginAnimation(ScaleTransform.ScaleXProperty,shrink);grow.BeginAnimation(ScaleTransform.ScaleYProperty,shrink);
+        }
+        // Once the opening motion is over the player is drawn live again and its colors drift.
+        void SettleOpen(int ms)
+        {
+            if(transitionSettle==null){transitionSettle=new System.Windows.Threading.DispatcherTimer();transitionSettle.Tick+=(s,e)=>{transitionSettle.Stop();if(open){CacheMode=null;Backdrop.Hold(false);}};}
+            transitionSettle.Stop();transitionSettle.Interval=TimeSpan.FromMilliseconds(ms);transitionSettle.Start();
         }
         void ShowProgress()
         {

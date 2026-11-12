@@ -515,7 +515,7 @@ namespace Lucent
             try
             {
                 var read=paletteSession.Read();
-                if(await Task.WhenAny(read,Task.Delay(200))!=read||closing)return;
+                if(await Task.WhenAny(read,Task.Delay(120))!=read||closing)return;
                 var track=read.Result;
                 string key=track==null?"":track.Source+"|"+track.Title+"|"+track.Artist;
                 if(key==paletteTrack&&MediaSession.SameArtwork(paletteArtwork,track==null?null:track.Artwork))return;
@@ -559,7 +559,8 @@ namespace Lucent
         }
         // The drifting colors of the artwork behind the app (the same motion as the mini player). They show while something is playing and the
         // setting is on; they only move while it is playing, and rest when it is paused, when the window is minimized or hidden.
-        readonly FlowingBackdrop flowBackdrop=new FlowingBackdrop {Player=true,LightCap=185,Lively=true,Speed=1.9,Travel=1.5,Shade=.3,Chroma=1.5};
+        // The same colors as the players: the same cover, light, color and shade (only how fast it drifts differs), so the app, the bar and every player match.
+        readonly FlowingBackdrop flowBackdrop=new FlowingBackdrop {Player=true,LightCap=185,Lively=true,Speed=1.9,Travel=1.5,Shade=.45};
         readonly Grid flowHost=new Grid {Visibility=Visibility.Collapsed,IsHitTestVisible=false};
         BitmapSource flowCover;
         // The cover as the backdrops see it: its minor colors pulled to the one it has the most of. (The sections keep following the cover's average.)
@@ -581,7 +582,7 @@ namespace Lucent
             flowHost.Visibility=want?Visibility.Visible:Visibility.Collapsed;
             if(want)
             {
-                var field=PaletteField;
+                var field=paletteBitmap;
                 if(!ReferenceEquals(flowCover,field)){flowCover=field;started=flowBackdrop.SetCover(field);}
                 // The moving colors are a fixed amount, not tied to the color amount, which would have left them nearly invisible.
                 flowHost.Opacity=1;
@@ -1023,6 +1024,9 @@ namespace Lucent
                 settingsCard.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
             }
             foreach(var gear in new[]{settingsRailButton,settingsOverlayGear})Design.Animate((UIElement)gear.Content,OpacityProperty,open?.57:1,open?1:.57,180);
+            // Behind settings is a blurred copy of the window. While the colors drift that copy changes every frame, so the whole window was blurred again at every
+            // step: the colors rest while settings is open, and the card moves as one picture, so each step only moves pictures.
+            if(!TestMode){flowBackdrop.Hold(true);settingsCard.CacheMode=new BitmapCache(VisualTreeHelper.GetDpi(this).DpiScaleX);}
             // Building the blur makes the first frame slow. Start
             // the clock after it is drawn, or the curve would skip ahead to catch up.
             int frames=0;EventHandler begin=null;
@@ -1040,7 +1044,9 @@ namespace Lucent
                 {
                     if(transition!=settingsTransition)return;
                     BeginAnimation(SettingsMotionProperty,null);SetValue(SettingsMotionProperty,to);
+                    settingsCard.CacheMode=null;
                     if(settingsOpen)return;
+                    if(!TestMode)flowBackdrop.Hold(WindowState==WindowState.Minimized||!IsVisible);
                     settingsLayer.Visibility=Visibility.Hidden;
                     settingsBackdropLayer.Visibility=Visibility.Collapsed;
                     settingsRailButton.Opacity=1;

@@ -46,6 +46,22 @@ class StartupBench
    Console.WriteLine("big player open #"+i+": call "+call+" ms, laid out and drawn "+laid+" ms, idle "+watch.ElapsedMilliseconds+" ms");
    await Task.Delay(700);Call(shell,"SetBigPlayerOpen",false);await Task.Delay(700);
   }
+  // Smoothness of the motions: the gaps between screen frames while each runs (with the drifting colors on, as in use).
+  shell.TestMode=false;
+  foreach(var step in new[]{Tuple.Create("big player open",(Action)(()=>Call(shell,"SetBigPlayerOpen",true))),Tuple.Create("big player close",(Action)(()=>Call(shell,"SetBigPlayerOpen",false))),
+   Tuple.Create("settings open",(Action)(()=>Call(shell,"SetSettingsOpen",true))),Tuple.Create("settings close",(Action)(()=>Call(shell,"SetSettingsOpen",false)))})
+  {
+   var gaps=new System.Collections.Generic.List<double>();var clock=Stopwatch.StartNew();double last=-1;
+   EventHandler frame=(s,e)=>{double now=clock.Elapsed.TotalMilliseconds;if(last>=0)gaps.Add(now-last);last=now;};
+   System.Windows.Media.CompositionTarget.Rendering+=frame;
+   var call=Stopwatch.StartNew();step.Item2();long callMs=call.ElapsedMilliseconds;
+   await Task.Delay(650);
+   System.Windows.Media.CompositionTarget.Rendering-=frame;
+   var sorted=gaps.OrderBy(x=>x).ToList();
+   Console.WriteLine(string.Format("{0,-17} call {1,3} ms | {2,3} frames, avg gap {3,5:0.0} ms, p95 {4,5:0.0}, longest {5,5:0.0} ms",step.Item1,callMs,gaps.Count,gaps.Count==0?0:gaps.Average(),sorted.Count==0?0:sorted[(int)(sorted.Count*.95)],sorted.Count==0?0:sorted.Last()));
+   await Task.Delay(400);
+  }
+  shell.TestMode=true;
   shell.Close();
  }
 }
