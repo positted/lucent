@@ -625,12 +625,7 @@ class ModernUiTests
   }  // ---- The window's corners are round (8 px, like Windows' own) and smooth: a see-through window clipped with an anti-aliased shape.
   {
    var surface=(FrameworkElement)shell.Content;
-   Check(shell.AllowsTransparency&&surface.Clip!=null&&Math.Abs(shell.CurrentWindowRadius-8)<.01,"The window should have 8 px smooth corners");
-   var corner=new System.Windows.Media.Imaging.RenderTargetBitmap((int)surface.ActualWidth,(int)surface.ActualHeight,96,96,PixelFormats.Pbgra32);corner.Render(surface);
-   var probe=new byte[4];Func<int,int,int> Alpha=(px,py)=>{corner.CopyPixels(new Int32Rect(px,py,1,1),probe,4,0);return probe[3];};
-   int edge=0;for(int k=0;k<6;k++){int a=Alpha(k,k);if(a>0&&a<255)edge++;}
-   Check(Alpha(0,0)==0&&Alpha((int)surface.ActualWidth-1,(int)surface.ActualHeight-1)==0&&Alpha((int)surface.ActualWidth/2,(int)surface.ActualHeight/2)==255&&Alpha((int)surface.ActualWidth/2,1)==255,"The window corners are not cut round");
-   Check(edge>=1,"The corner edge should be smooth (partly transparent pixels), not a hard step");
+   Check(!shell.AllowsTransparency&&shell.WindowStyle==WindowStyle.SingleBorderWindow,"The main window should be an opaque window that Windows rounds and animates");
   }  // ---- Artist pictures: off by default, nothing is looked up until switched on, and only the right artist's picture is used.
   {
    var picturePrefs=(Preferences)Field(shell,"preferences");
@@ -704,7 +699,7 @@ class ModernUiTests
    Func<double> Where=()=>slides[0].X+slides[0].Y+slides[1].X+slides[1].Y;
    Check(Math.Abs(Where())>.01,"The colors should be drifting while active: "+Where());
    back.SetActive(false);await Task.Delay(150);double held=Where();await Task.Delay(300);
-   Check(Math.Abs(held)>.01&&Math.Abs(Where()-held)<.0001,"Pausing should hold the colors where they are, not move or reset them: "+held+" then "+Where());
+   Check(Math.Abs(held)>.01&&Math.Abs(Where()-held)<.0001,"Pausing should hold the colors where they are, not move or reset them: "+held+" then "+Where()+" clocks "+((System.Collections.IList)Field(back,"clocks")).Count+" running "+back.Running+" paused "+string.Join(",",((System.Collections.Generic.List<Tuple<System.Windows.Media.Animation.Animatable,DependencyProperty,System.Windows.Media.Animation.AnimationClock>>)Field(back,"clocks")).Select(t=>t.Item3.IsPaused+"/"+t.Item3.CurrentState)));
    back.SetActive(true);await Task.Delay(300);
    Check(Math.Abs(Where()-held)>.0001&&Math.Abs(Where())>.01,"Playing again should carry on from where it stopped: "+held+" then "+Where());
    // A new song's colors fade in over the old song's (worked out off the app's own thread) instead of dipping to black in between.
@@ -1319,7 +1314,7 @@ await Until(()=>((UIElement)Field(shell,"settingsLayer")).Visibility!=Visibility
   // Every surface follows one value, sampled through the transition.
   for(int i=0;i<4;i++){await Task.Delay(30);double p=shade.Opacity;Check(Math.Abs(backdrop.Opacity-p)<1e-9&&Math.Abs(card.Opacity-p)<1e-9,"Settings surfaces drifted apart at p="+p);}
   await Until(()=>Math.Abs(card.Opacity-1)<.001&&Math.Abs(shade.Opacity-1)<.001);Check(Math.Abs(card.Opacity-1)<.001&&Math.Abs(shade.Opacity-1)<.001,"Settings did not settle open");
-  Call(shell,"SetSettingsOpen",false);await Task.Delay(90);double midOpacity=card.Opacity;Check(midOpacity>0&&midOpacity<1,"Close animation did not start: "+midOpacity);
+  Call(shell,"SetSettingsOpen",false);await Until(()=>card.Opacity<.85);double midOpacity=card.Opacity;Check(midOpacity>0&&midOpacity<1,"Close animation did not start: "+midOpacity);
   Call(shell,"SetSettingsOpen",true);Check(Math.Abs(card.Opacity-midOpacity)<.05,"Reopening mid-close jumped: "+card.Opacity+" from "+midOpacity);
   await Until(()=>Math.Abs(card.Opacity-1)<.001&&layer.Visibility==Visibility.Visible);Check(Math.Abs(card.Opacity-1)<.001&&layer.Visibility==Visibility.Visible,"Reopen did not settle");
   Call(shell,"SetSettingsOpen",false);await Until(()=>layer.Visibility==Visibility.Hidden&&backdrop.Visibility==Visibility.Collapsed);Check(layer.Visibility==Visibility.Hidden&&backdrop.Visibility==Visibility.Collapsed,"Settings did not close and release its motion layers");

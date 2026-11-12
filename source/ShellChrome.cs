@@ -233,6 +233,12 @@ namespace Lucent
             BigPlayerView.PerformanceMode=()=>preferences.PerformanceMode;
             BigPlayerView.LyricsChanged=on=>{preferences.ShowLyrics=on;saveTimer.Stop();saveTimer.Start();};
             bigPlayerView=new BigPlayerView(this,TestMode,closePlayer,overlayChrome,true);
+            // The cover of the player bar, for the player to grow out of and shrink into. Where the bar will be once it is up: it is hidden while the player is open.
+            bigPlayerView.CoverTarget=()=>
+            {
+                if(!playerBarOpen||!playerDockShown||root.ActualHeight<=0)return (Rect?)null;
+                return new Rect(16+PlayerBar.BarLeft+14,root.ActualHeight-14-PlayerBar.BarBottom-PlayerBar.BarHeight+14,40,40);
+            };
             Panel.SetZIndex(bigPlayerView,8);
             root.Children.Add(bigPlayerView);
             // The page and its fade-out copy share one frame that gives way to the player bar.
@@ -385,7 +391,12 @@ namespace Lucent
             // The page makes room above the bar, and the buttons' pill fades, since the bar is behind them now.
             // The page runs on underneath the bar (the bar is glass), so what scrolls past shows through it; the page's end keeps clear of the bar.
             pageInset=show?PlayerBar.PageInset:0;
-            foreach(var holder in pageHolders.Values)holder.BeginAnimation(MarginProperty,new ThicknessAnimation(new Thickness(0,PageTop,0,pageInset),TimeSpan.FromMilliseconds(show?260:200)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}});
+            // Only the page in view glides to its new room; the others (hidden, but kept laid out) are simply given it, so they are not laid out again at every step.
+            foreach(var holder in pageHolders.Values)
+            {
+                if(ReferenceEquals(holder,content)&&!Design.Instant)holder.BeginAnimation(MarginProperty,new ThicknessAnimation(new Thickness(0,PageTop,0,pageInset),TimeSpan.FromMilliseconds(show?260:200)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}});
+                else{holder.BeginAnimation(MarginProperty,null);holder.Margin=new Thickness(0,PageTop,0,pageInset);}
+            }
             dockPillBrush.BeginAnimation(SolidColorBrush.ColorProperty,new ColorAnimation(Color.FromArgb(show?(byte)0:(byte)22,255,255,255),TimeSpan.FromMilliseconds(220)));
         }        // Centering on the cursor's monitor would hang the window off a smaller or portrait display.
         void AvoidTooSmallScreen()
@@ -494,6 +505,30 @@ namespace Lucent
             }
             catch{ }finally{readingPalette=false;}
         }
+        // Coming back from the tray or the taskbar: nothing was read while the window was away, so the song may have changed. It is read once now (quickly, or not
+        // at all if that takes too long), and when it is another song its colors are put in place without a fade, before the window shows.
+        bool snapColors;
+        async Task RefreshColorsBeforeShowing()
+        {
+            if(readingPalette||closing)return;
+            readingPalette=true;
+            try
+            {
+                var read=paletteSession.Read();
+                if(await Task.WhenAny(read,Task.Delay(200))!=read||closing)return;
+                var track=read.Result;
+                string key=track==null?"":track.Source+"|"+track.Title+"|"+track.Artist;
+                if(key==paletteTrack&&MediaSession.SameArtwork(paletteArtwork,track==null?null:track.Artwork))return;
+                if(customBackgroundLoaded&&preferences.Artwork)return;
+                snapColors=true;Design.Instant=true;
+                SetMediaAvailable(track!=null);ambientTrack=track;
+                PrepareTrackColors(track);UpdateHome();
+                // The pictures of the new colors are made off the UI thread; they are in place a moment later.
+                await Task.Delay(140);
+            }
+            catch(Exception){}
+            finally{snapColors=false;Design.Instant=preferences.PerformanceMode;readingPalette=false;}
+        }
         // Works out the colors of a song's cover (once per song) and starts the change to them.
         void PrepareTrackColors(MediaTrack track)
         {
@@ -578,7 +613,7 @@ namespace Lucent
             Color accent=Adaptive?customBackgroundLoaded&&preferences.Artwork?animatedBackground.AccentColor:mediaAccent:Color.FromRgb(46,46,48);
             double strength=Math.Max(0,Math.Min(1,preferences.ThemeIntensity));
             bool colored=Adaptive&&(paletteArtwork!=null||customBackgroundLoaded||mediaAccent!=Color.FromRgb(46,46,48));
-            colorSync.Enabled=!TestMode&&!preferences.PerformanceMode;
+            colorSync.Enabled=!TestMode&&!preferences.PerformanceMode&&!snapColors;
             ambientBackdrop.Sync=flowBackdrop.Sync=colorSync;
             if(playerBar!=null)playerBar.Backdrop.Sync=colorSync;
             int round=colorSync.Begin(),waiting=0;

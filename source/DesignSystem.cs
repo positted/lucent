@@ -32,11 +32,17 @@ namespace Lucent
         // Rasterizing each element once keeps the smooth edges at no per-frame cost.
         static readonly BitmapCache Rasterized=NewCache();
         static BitmapCache NewCache(){var cache=new BitmapCache{SnapsToDevicePixels=true};cache.Freeze();return cache;}
-        public SmoothText(){CacheMode=Rasterized;}
+        // The text is drawn into a child of its own, which keeps the picture. When the element only gets wider or narrower (a window being resized) and the words
+        // and their line breaks stay the same, that child is not touched, so nothing is drawn again: redrawing every stretched label at each step of a resize was most of its cost.
+        readonly DrawingVisual ink=new DrawingVisual();
+        string inkKey;Brush inkBrush;
+        public SmoothText(){ink.CacheMode=Rasterized;AddVisualChild(ink);}
+        protected override int VisualChildrenCount {get{return 1;}}
+        protected override Visual GetVisualChild(int index){return ink;}
         // Text is kept as a small picture so a page opens quickly, but a picture drawn at one size goes soft when it is scaled up. A window that
         // scales its contents (the mini player) turns this on for everything inside it, and the text is then drawn as it is, at any size.
         public static readonly DependencyProperty CrispProperty=DependencyProperty.RegisterAttached("Crisp",typeof(bool),typeof(SmoothText),
-            new FrameworkPropertyMetadata(false,FrameworkPropertyMetadataOptions.Inherits,(d,e)=>{var text=d as SmoothText;if(text!=null)text.CacheMode=(bool)e.NewValue?null:Rasterized;}));
+            new FrameworkPropertyMetadata(false,FrameworkPropertyMetadataOptions.Inherits,(d,e)=>{var text=d as SmoothText;if(text!=null)text.ink.CacheMode=(bool)e.NewValue?null:Rasterized;}));
         public static bool GetCrisp(DependencyObject element){return (bool)element.GetValue(CrispProperty);}
         public static void SetCrisp(DependencyObject element,bool value){element.SetValue(CrispProperty,value);}
         public string Text {get{return (string)GetValue(TextProperty);}set{SetValue(TextProperty,value);}}
@@ -82,10 +88,13 @@ namespace Lucent
         static readonly System.Collections.Generic.Dictionary<string,Geometry> Outlines=new System.Collections.Generic.Dictionary<string,Geometry>();
         protected override void OnRender(DrawingContext dc)
         {
-            string text=Text;if(string.IsNullOrEmpty(text))return;
+            string text=Text;
+            if(string.IsNullOrEmpty(text)){if(inkKey!=null){inkKey=null;inkBrush=null;using(ink.RenderOpen()){}}return;}
             // Slightly over the measured width, so a rounded layout cannot rewrap the last word.
             double width=TextWrapping==TextWrapping.NoWrap?RenderSize.Width:RenderSize.Width+1;
             string key=MeasureKey(text,width)+"\u0001"+(int)FlowDirection;Geometry outline;
+            var brush=Foreground;
+            if(key==inkKey&&ReferenceEquals(brush,inkBrush))return;
             if(!Outlines.TryGetValue(key,out outline))
             {
                 outline=Format(text,width).BuildGeometry(new Point());
@@ -94,7 +103,8 @@ namespace Lucent
                 Outlines[key]=outline;
             }
             // Outlines alone read lighter than other apps' text on dark; a hairline restores the weight.
-            dc.DrawGeometry(Foreground,new Pen(Foreground,.2),outline);
+            using(var draw=ink.RenderOpen())draw.DrawGeometry(brush,new Pen(brush,.2),outline);
+            inkKey=key;inkBrush=brush;
         }        protected override System.Windows.Automation.Peers.AutomationPeer OnCreateAutomationPeer(){return new TextPeer(this);}
         sealed class TextPeer:System.Windows.Automation.Peers.FrameworkElementAutomationPeer
         {

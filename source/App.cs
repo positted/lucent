@@ -32,6 +32,19 @@ namespace Lucent
             }
             catch(IOException){}catch(UnauthorizedAccessException){}
         }
+        // Starting up is mostly the time .NET takes to turn the app's code into machine code as each part is first used. With a profile, .NET remembers which parts a
+        // start-up used and, from the next start on, prepares them ahead on the other processor cores while the window is being built. The profile is a small file
+        // beside the settings; the first start after an update writes a new one.
+        internal static void StartJitProfile()
+        {
+            try
+            {
+                Directory.CreateDirectory(StateStore.Folder);
+                System.Runtime.ProfileOptimization.SetProfileRoot(StateStore.Folder);
+                System.Runtime.ProfileOptimization.StartProfile("startup-"+Design.Version+".jitprofile");
+            }
+            catch(Exception){}
+        }
         [STAThread] public static void Main(string[] args)
         {
             if(args.Length==3&&args[0]=="--effects"){NativeEffects.Worker(args[1],int.Parse(args[2]));return;}
@@ -47,6 +60,7 @@ namespace Lucent
                     return;
                 }
                 if(capture)StateStore.Folder=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"test-data");
+                StartJitProfile();
                 Forms.Application.EnableVisualStyles();var app=new Application {ShutdownMode=ShutdownMode.OnMainWindowClose};
                 AppDomain.CurrentDomain.UnhandledException+=(s,e)=>LogCrash(e.ExceptionObject);
                 app.DispatcherUnhandledException+=(s,e)=>
@@ -130,9 +144,13 @@ namespace Lucent
         readonly Dictionary<string,Button> backgroundButtons=new Dictionary<string,Button>();
         TextBlock backgroundName;
         bool customBackgroundLoaded;
+        // Where the time of starting up goes, for the start-up bench (tests): each mark is the time since the last one.
+        internal static readonly System.Diagnostics.Stopwatch StartClock=System.Diagnostics.Stopwatch.StartNew();
+        internal static readonly List<string> StartMarks=new List<string>();static long lastMark;
+        internal static void Mark(string what){long now=StartClock.ElapsedMilliseconds;StartMarks.Add((now-lastMark).ToString().PadLeft(5)+" ms  "+what);lastMark=now;}
         public Shell(bool testMode=false)
         {
-            TestMode=testMode;Design.EnableButtonMotion();
+            Mark("start");TestMode=testMode;Design.EnableButtonMotion();
             preferences=StateStore.Load();
             current=preferences.Desktop.Copy();
             current.DarkEnabled=false;
@@ -143,16 +161,19 @@ namespace Lucent
             MinHeight=680;
             WindowStartupLocation=WindowStartupLocation.CenterScreen;
             AvoidTooSmallScreen();
-            // The window is drawn by Lucent itself (see-through, clipped to a smooth rounded shape), with the same corners Windows gives its own windows.
-            AllowsTransparency=true;
-            Background=Brushes.Transparent;
+            // An ordinary (not see-through) window: Windows draws it straight to the screen, rounds its corners and animates its minimizing, restoring, showing and hiding itself.
+            // A see-through window had to be copied back from the graphics card at every frame, which is what made resizing it lag (about twice the time for each step).
+            AllowsTransparency=false;
+            Background=Brushes.Black;
             Foreground=Brushes.White;
             FontFamily=Design.Font;
             FontSize=14;
             FontWeight=FontWeights.Medium;
             SnapsToDevicePixels=true;
-            WindowStyle=WindowStyle.None;
+            // With a standard border behind the custom chrome (nothing of it is drawn), Windows plays its own animations for this window.
+            WindowStyle=WindowStyle.SingleBorderWindow;
             ResizeMode=ResizeMode.CanResize;
+            SourceInitialized+=(s,e)=>WindowEdges.Round(this);
             Icon=System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"Lucent.ico")));
             InitializeMutablePalette();
             Resources=Design.Resources(Styles);
@@ -177,8 +198,8 @@ namespace Lucent
             workspace.ColumnDefinitions.Add(new ColumnDefinition {Width=new GridLength(0)});
             workspace.ColumnDefinitions.Add(new ColumnDefinition());
             workspace.RenderTransformOrigin=new Point(.07,.96);workspace.RenderTransform=appFold;root.Children.Add(workspace);
-            BuildNav();BuildBody();BuildPages();ShowPage("Home");
-            BuildPreviewPopup();InitializeAdaptiveTheme();BuildFloatingSettings();
+            Mark("window set up");BuildNav();BuildBody();Mark("nav and body");BuildPages();Mark("pages");ShowPage("Home");Mark("show home");
+            BuildPreviewPopup();InitializeAdaptiveTheme();Mark("theme");BuildFloatingSettings();Mark("settings");
             // Notices are a card at the top: it drops in, waits, and slides out.
             BuildNotice();
             statusTimer.Tick+=(sender,args)=>HideStatus();
@@ -218,14 +239,14 @@ namespace Lucent
         void BuildPages()
         {
             building=true;displays=DisplayService.GetDisplays();selected=displays.FirstOrDefault(x=>x.IsPrimary)??displays.FirstOrDefault();
-            pages["Home"]=HomePage();
-            pages["Video"]=VideoPage();
-            pages["Resolution"]=ResolutionPage();
-            pages["Profiles"]=ProfilesPage();
-            pages["Crosshair"]=CrosshairPage();
-            pages["Game Boost"]=BoostPage();
-            pages["Visual tools"]=DarkPage();
-            pages["Settings"]=SettingsPage();
+            Mark("displays");pages["Home"]=HomePage();Mark("page Home");
+            pages["Video"]=VideoPage();Mark("page Color");
+            pages["Resolution"]=ResolutionPage();Mark("page Display");
+            pages["Profiles"]=ProfilesPage();Mark("page Profiles");
+            pages["Crosshair"]=CrosshairPage();Mark("page Crosshair");
+            pages["Game Boost"]=BoostPage();Mark("page Boost");
+            pages["Visual tools"]=DarkPage();Mark("page Vision");
+            pages["Settings"]=SettingsPage();Mark("page Settings");
             building=false;
         }
         void ShowPage(string title)
@@ -352,7 +373,12 @@ namespace Lucent
             if(open)CloseOtherPlayers("big");
             bigPlayerOpen=open;
             ShowPlayerOpen(bigPlayerButton,open||bigPlayerWindow!=null);
-            if(open&&ambientTrack!=null&&bigPlayerView.Core.Track==null)bigPlayerView.Core.SetTrack(CopyTrack(ambientTrack));
+            if(open&&ambientTrack!=null)
+            {
+                // The player starts from the song the app knows now (it may have been given an earlier one when it was warmed up, or the last time it was open).
+                var shown=bigPlayerView.Core.Track;
+                if(shown==null||shown.Title!=ambientTrack.Title||shown.Artist!=ambientTrack.Artist||shown.Source!=ambientTrack.Source)bigPlayerView.Core.SetTrack(CopyTrack(ambientTrack));
+            }
             bigPlayerView.SetOpen(open);
             FoldApp(open);
             ApplyPlayerBar();
@@ -378,7 +404,20 @@ namespace Lucent
         }
         void Open(string title){BringToFront();ShowPage(title);}
         // From the tray the window is made invisible before it is shown, so it does not appear whole for a moment before it starts to grow.
-        void BringToFront(){if(!TestMode&&!preferences.PerformanceMode&&!leaving&&(!IsVisible||WindowState==WindowState.Minimized)){animateRestore=true;Opacity=0;EnsureVisibleSoon();}Show();WindowState=WindowState.Normal;Activate();}
+        // Windows animates the window coming back. Before it shows, the song is read again and its colors are put in place at once, so the window does not
+        // appear with the colors of the song that was playing when it was hidden and then change.
+        bool comingBack;
+        async void BringToFront()
+        {
+            if(comingBack)return;
+            if(!TestMode&&(!IsVisible||WindowState==WindowState.Minimized))
+            {
+                comingBack=true;
+                try{await RefreshColorsBeforeShowing();}catch(Exception){}
+                finally{comingBack=false;}
+            }
+            Show();WindowState=WindowState.Normal;Activate();
+        }
         internal static string ActivationSignal="Local\\Lucent.Activate";
         EventWaitHandle activationSignal;RegisteredWaitHandle activationWait;
         void ListenForActivation()
@@ -403,12 +442,28 @@ namespace Lucent
         // The round corners of the window, as round as Windows' own. A maximized window fills the screen, so it has none.
         internal const double WindowRadius=8;
         internal double CurrentWindowRadius {get{return WindowState==WindowState.Normal?WindowRadius:0;}}
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]struct WindowBox{public int Left,Top,Right,Bottom;}
+        [System.Runtime.InteropServices.DllImport("user32.dll")]static extern bool GetWindowRect(IntPtr window,out WindowBox box);
+        // Windows rounds the corners itself. A maximized window reaches a few pixels past the edges of the screen (its hidden resize border), so its contents
+        // are drawn inside what can actually be seen.
         void ShapeWindow()
         {
-            double radius=CurrentWindowRadius;
-            if(radius==0||windowSurface.ActualWidth<=0||windowSurface.ActualHeight<=0){windowSurface.Clip=null;return;}
-            var shape=new RectangleGeometry(new Rect(0,0,windowSurface.ActualWidth,windowSurface.ActualHeight),radius,radius);
-            shape.Freeze();windowSurface.Clip=shape;
+            var edge=new Thickness(0);
+            if(WindowState==WindowState.Maximized)
+            {
+                try
+                {
+                    var handle=new WindowInteropHelper(this).Handle;WindowBox box;
+                    if(handle!=IntPtr.Zero&&GetWindowRect(handle,out box))
+                    {
+                        var area=Forms.Screen.FromHandle(handle).WorkingArea;var dpi=VisualTreeHelper.GetDpi(this);
+                        edge=new Thickness(Math.Max(0,(area.Left-box.Left)/dpi.DpiScaleX),Math.Max(0,(area.Top-box.Top)/dpi.DpiScaleY),Math.Max(0,(box.Right-area.Right)/dpi.DpiScaleX),Math.Max(0,(box.Bottom-area.Bottom)/dpi.DpiScaleY));
+                        if(edge.Left>24||edge.Top>24||edge.Right>24||edge.Bottom>24)edge=new Thickness(0);
+                    }
+                }
+                catch(Exception){}
+            }
+            if(windowSurface.Margin!=edge)windowSurface.Margin=edge;
         }
         readonly SolidColorBrush sidebarSurface=new SolidColorBrush(Color.FromArgb(224,8,8,8));
         readonly SolidColorBrush selectedDisplaySurface=new SolidColorBrush(Color.FromArgb(220,39,39,39));

@@ -64,6 +64,18 @@ namespace Lucent
             view.Measure(new Size(360,520));view.Arrange(new Rect(0,0,360,520));view.UpdateLayout();
             view.SetLyrics(null);
         }
+        // The first opening of the big player did everything for the first time at once (its code, its layout, decoding the cover at full size), which showed as a
+        // stall right when its opening motion should play. All of that is done once beforehand, while the app is idle and the player is not showing.
+        internal void WarmBigPlayer()
+        {
+            if(bigPlayerView==null||bigPlayerOpen)return;
+            try
+            {
+                if(ambientTrack!=null&&bigPlayerView.Core.Track==null)bigPlayerView.Core.SetTrack(CopyTrack(ambientTrack));
+                bigPlayerView.Warm();
+            }
+            catch(Exception){}
+        }
         internal void WarmResize()
         {
             WarmText();
@@ -126,7 +138,7 @@ namespace Lucent
                 {
                     warmed=true;
                     var warm=new DispatcherTimer {Interval=TimeSpan.FromMilliseconds(2500)};
-                    warm.Tick+=(a,b)=>{warm.Stop();if(closing||!IsVisible||leaving)return;WarmText();WarmResize();};
+                    warm.Tick+=(a,b)=>{warm.Stop();if(closing||!IsVisible||leaving)return;WarmText();WarmResize();WarmBigPlayer();};
                     warm.Start();
                 }
                 if(IsVisible&&animateRestore&&WindowState!=WindowState.Minimized){animateRestore=false;GrowBack();}
@@ -135,6 +147,7 @@ namespace Lucent
         // the tray (toRight) is the exact reverse of coming back from it: the window slides to the right, shrinks a little and fades.
         // Going to the tray and coming back from it use the same distance, size, time and easing, one the mirror of the other.
         const double MotionTime=200;
+        const bool NativeMotion=true;
         // While the window shrinks or grows it is drawn once into a picture on the graphics card and only that picture moves, and the drifting colors stand still,
         // so no text or card is drawn again at every step.
         void BeginMotionCache()
@@ -149,7 +162,8 @@ namespace Lucent
         }
         void AnimateAway(Action then)
         {
-            if(TestMode||preferences.PerformanceMode||closing||leaving||!IsVisible||WindowState==WindowState.Minimized){then();return;}
+            // Windows animates minimizing and hiding an ordinary window itself, smoothly and outside the app, so there is nothing to do here but go.
+            if(NativeMotion||TestMode||preferences.PerformanceMode||closing||leaving||!IsVisible||WindowState==WindowState.Minimized){then();return;}
             leaving=true;
             BeginMotionCache();
             var scale=new ScaleTransform(1,1);

@@ -454,17 +454,30 @@ namespace Lucent
                 }
             }
         }
-        // The motion only runs while the player is on screen and something is playing.
+        // The motion only runs while the player is on screen and something is playing. Pausing keeps the clock times and holds each
+        // layer at its current value; resuming builds the clocks again and seeks them to those times, so the colors carry on from there.
+        // (Pausing the clocks themselves left them drifting on some systems.)
+        TimeSpan[] heldTimes;
         void Run(bool on)
         {
             if(on==running)return;
             running=on;
             if(on)
             {
-                if(clocks.Count==0)Build();
-                else foreach(var entry in clocks)entry.Item3.Controller.Resume();
+                var times=heldTimes;heldTimes=null;
+                if(clocks.Count>0)Clear();
+                Build();
+                if(times!=null&&times.Length==clocks.Count)
+                    for(int i=0;i<clocks.Count;i++)clocks[i].Item3.Controller.Seek(times[i],System.Windows.Media.Animation.TimeSeekOrigin.BeginTime);
             }
-            else foreach(var entry in clocks)entry.Item3.Controller.Pause();
+            else if(clocks.Count>0)
+            {
+                heldTimes=new TimeSpan[clocks.Count];
+                var values=new object[clocks.Count];
+                for(int i=0;i<clocks.Count;i++){heldTimes[i]=clocks[i].Item3.CurrentTime??TimeSpan.Zero;values[i]=clocks[i].Item1.GetValue(clocks[i].Item2);}
+                for(int i=0;i<clocks.Count;i++){var entry=clocks[i];entry.Item1.ApplyAnimationClock(entry.Item2,null);entry.Item1.SetValue(entry.Item2,values[i]);}
+                clocks.Clear();
+            }
         }
     }
 }

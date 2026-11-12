@@ -243,6 +243,25 @@ namespace Lucent
             cover.Clip=new RectangleGeometry(new Rect(0,0,side,side),16,16);
         }
         System.Windows.Threading.DispatcherTimer transitionSettle;
+        // Lays the player out once without showing it (hidden things are laid out but not drawn), so its first real opening has nothing left to do for the first time.
+        internal void Warm()
+        {
+            if(open||Visibility!=Visibility.Collapsed)return;
+            Visibility=Visibility.Hidden;
+            try{RefreshPerformance();ApplyLayout(false);UpdateLayout();}
+            finally{if(!open)Visibility=Visibility.Collapsed;}
+        }
+        // Where the cover of the player bar is, in this view's own coordinates (null when there is no bar to go to). The player grows out of that cover and,
+        // closing, shrinks down into it.
+        internal Func<Rect?> CoverTarget;
+        Rect? AimAtCover()
+        {
+            Rect? target=CoverTarget==null?(Rect?)null:CoverTarget();
+            if(target==null||ActualWidth<=0||ActualHeight<=0){RenderTransformOrigin=new Point(.07,.96);return null;}
+            var cover=target.Value;
+            RenderTransformOrigin=new Point((cover.X+cover.Width/2)/ActualWidth,(cover.Y+cover.Height/2)/ActualHeight);
+            return target;
+        }
         internal async void SetOpen(bool show)
         {
             if(show==open)return;
@@ -255,6 +274,7 @@ namespace Lucent
                 Visibility=Visibility.Visible;
                 RefreshPerformance();
                 ApplyLayout(false);
+                AimAtCover();
                 Design.Animate(this,OpacityProperty,Opacity,1,150);
                 slide.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(22,0,TimeSpan.FromMilliseconds(320)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}});
                 var swell=new DoubleAnimation(.16,1,TimeSpan.FromMilliseconds(520)){EasingFunction=new BackEase{EasingMode=EasingMode.EaseOut,Amplitude=.16}};
@@ -265,6 +285,19 @@ namespace Lucent
                 return;
             }
             Core.Stop();
+            var aim=AimAtCover();
+            if(aim!=null)
+            {
+                // The whole player shrinks down into the cover on the player bar: it ends as small as that cover, right on it, and only fades out as it gets there.
+                double small=Math.Max(.03,Math.Min(.2,aim.Value.Width/ActualWidth));
+                var fadeInto=new DoubleAnimation(Opacity,0,TimeSpan.FromMilliseconds(150)){BeginTime=TimeSpan.FromMilliseconds(210)};
+                fadeInto.Completed+=(s,e)=>{if(!open){Visibility=Visibility.Collapsed;CacheMode=null;}};
+                BeginAnimation(OpacityProperty,fadeInto);
+                slide.BeginAnimation(TranslateTransform.YProperty,null);slide.Y=0;
+                var shrinkInto=new DoubleAnimation(grow.ScaleX,small,TimeSpan.FromMilliseconds(360)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseInOut}};
+                grow.BeginAnimation(ScaleTransform.ScaleXProperty,shrinkInto);grow.BeginAnimation(ScaleTransform.ScaleYProperty,shrinkInto);
+                return;
+            }
             var fade=new DoubleAnimation(Opacity,0,TimeSpan.FromMilliseconds(260)){BeginTime=TimeSpan.FromMilliseconds(60)};
             fade.Completed+=(s,e)=>{if(!open){Visibility=Visibility.Collapsed;CacheMode=null;}};
             BeginAnimation(OpacityProperty,fade);

@@ -332,7 +332,7 @@ namespace Lucent
         }
         // Moves to a new size, keeping the top left corner where it is unless the bottom would leave the screen.
         int resizeMotion;
-        void ResizeTo(Size target,bool animate)
+        void ResizeTo(Size target,bool animate,Action after=null)
         {
             resizeMotion++;
             var area=SystemParameters.WorkArea;
@@ -349,30 +349,21 @@ namespace Lucent
                 animating=false;
                 OnSized();
                 Lyrics.Thaw();
+                if(after!=null)after();
             };
             if(!animate||!IsVisible||testMode){finish();return;}
             // The lyrics keep their layout and are drawn once as a picture while the window changes size, so only the window moves.
             // (No picture of the lyrics is made: with their row already at its final size they are not laid out or redrawn at each step, and a cached picture of them was drawn again at every step.)
             Lyrics.Frozen=true;Backdrop.Hold(true);
             var ease=new CubicEase {EasingMode=EasingMode.EaseOut};
-            var grow=new DoubleAnimation(ActualHeight,target.Height,TimeSpan.FromMilliseconds(260)){EasingFunction=ease};
+            var grow=new DoubleAnimation(ActualHeight,target.Height,TimeSpan.FromMilliseconds(220)){EasingFunction=ease};
             grow.Completed+=(s,e)=>finish();
             // The width changes at once and only the height glides, like a drawer: resizing in both directions at every step lagged, most of all when the window
             // had been made bigger first and had to change its width to open the lyrics.
             BeginAnimation(WidthProperty,null);Width=target.Width;
-            // What has just changed inside (the lyrics appearing, or going) is laid out and drawn once first; the glide starts on the frame after, so it plays from
-            // its beginning instead of skipping ahead past a slow first frame.
-            UpdateLayout();
-            int motion=resizeMotion,frames=0;EventHandler begin=null;
-            begin=(s,e)=>
-            {
-                if(++frames<2)return;
-                CompositionTarget.Rendering-=begin;
-                if(motion!=resizeMotion||!animating)return;
-                BeginAnimation(TopProperty,new DoubleAnimation(Top,top,TimeSpan.FromMilliseconds(260)){EasingFunction=ease});
-                BeginAnimation(HeightProperty,grow);
-            };
-            CompositionTarget.Rendering+=begin;
+            // The glide starts at once, on the click: nothing heavy happens first (the lyrics themselves only come in when the window has arrived).
+            BeginAnimation(TopProperty,new DoubleAnimation(Top,top,TimeSpan.FromMilliseconds(220)){EasingFunction=ease});
+            BeginAnimation(HeightProperty,grow);
         }
 
         // ---- Closing: the window closes at once, and a picture of it takes its place, shrinks a little toward its middle (to about 90%) and drops a few pixels while it
@@ -461,23 +452,32 @@ namespace Lucent
         void ShowLyricsView(bool animate)
         {
             int motion=++lyricsMotion;
-            Lyrics.Visibility=Visibility.Visible;
             // The window grows downward from its small size (the lyrics expand out of it, as a drawer, instead of a new window opening), and the lyrics fade in as it grows.
             bool glide=animate&&IsVisible&&!testMode;
             var target=LyricsSizeFor(ActualWidth>0?ActualWidth:Width);
             // While the window grows the lyrics already have the size they will end with (their row is as tall as it will be and the controls wait below it), so nothing
             // inside is laid out or redrawn at every step: the window only uncovers it. A row that followed the window's height had the whole list drawn again at every step.
             lyricsRow.Height=glide?new GridLength(Math.Max(100,target.Height/ScaleFor(target.Width)-CompactHeight)):new GridLength(1,GridUnitType.Star);
-            ResizeTo(target,glide);
             Lyrics.RenderTransform=lyricsRise;
             if(glide)
             {
-                Lyrics.Opacity=0;
-                // The lyrics stay unseen while the window opens (text that is not shown is not drawn, so every step of the glide is as cheap as when closing) and fade in as it arrives.
-                Lyrics.BeginAnimation(OpacityProperty,new DoubleAnimation(0,1,TimeSpan.FromMilliseconds(200)){BeginTime=TimeSpan.FromMilliseconds(240),EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
-                lyricsRise.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(12,0,TimeSpan.FromMilliseconds(220)){BeginTime=TimeSpan.FromMilliseconds(240),EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
+                // The window starts to open on the click itself, empty: laying out and drawing the lyrics is the slow part (it used to hold the click up for a moment),
+                // so they are only brought in once the window has arrived, and fade in there. The glide itself then draws no text at all.
+                Lyrics.Visibility=Visibility.Collapsed;
+                ResizeTo(target,true,()=>
+                {
+                    if(motion!=lyricsMotion||!lyricsOn)return;
+                    Lyrics.Opacity=0;Lyrics.Visibility=Visibility.Visible;
+                    Lyrics.BeginAnimation(OpacityProperty,new DoubleAnimation(0,1,TimeSpan.FromMilliseconds(170)){BeginTime=TimeSpan.FromMilliseconds(50),EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
+                    lyricsRise.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(10,0,TimeSpan.FromMilliseconds(200)){BeginTime=TimeSpan.FromMilliseconds(50),EasingFunction=new CubicEase {EasingMode=EasingMode.EaseOut}});
+                });
             }
-            else{Lyrics.BeginAnimation(OpacityProperty,null);Lyrics.Opacity=1;lyricsRise.BeginAnimation(TranslateTransform.YProperty,null);lyricsRise.Y=0;}
+            else
+            {
+                Lyrics.Visibility=Visibility.Visible;
+                ResizeTo(target,false);
+                Lyrics.BeginAnimation(OpacityProperty,null);Lyrics.Opacity=1;lyricsRise.BeginAnimation(TranslateTransform.YProperty,null);lyricsRise.Y=0;
+            }
         }
         void HideLyricsView(bool animate)
         {
@@ -492,12 +492,8 @@ namespace Lucent
                 ResizeTo(new Size(Math.Round(keep),Math.Round(CompactHeight*ScaleFor(keep))),animate&&IsVisible&&!testMode);
                 Lyrics.BeginAnimation(OpacityProperty,null);Lyrics.Opacity=1;lyricsRise.BeginAnimation(TranslateTransform.YProperty,null);lyricsRise.Y=0;
             };
-            if(!animate||!IsVisible||testMode){close();return;}
-            Lyrics.RenderTransform=lyricsRise;
-            var fade=new DoubleAnimation(Lyrics.Opacity,0,TimeSpan.FromMilliseconds(150)){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseIn}};
-            fade.Completed+=(s,e)=>close();
-            Lyrics.BeginAnimation(OpacityProperty,fade);
-            lyricsRise.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(lyricsRise.Y,12,TimeSpan.FromMilliseconds(150)){EasingFunction=new CubicEase {EasingMode=EasingMode.EaseIn}});
+            // The lyrics go at once and the window starts to fold on the click itself (fading them out first made the click feel late).
+            close();
         }        // A see-through window of its own that shows a picture of this window as it is now, in the same place.
         Window MakeGhost()
         {
