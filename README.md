@@ -27,9 +27,11 @@ Free and open source (MIT) · Windows 10 / 11 · **[Download Lucent-Setup.exe](h
 <img src="docs/images/colors-follow-music.gif" alt="The app's colors changing from one album cover to the next" width="860">
 </p>
 
+## Screenshots
+
 <table>
 <tr>
-<td align="center"><img src="docs/images/player.png" alt="The player, with the artist's picture and lyrics" width="430"><br><sub>The player</sub></td>
+<td align="center"><img src="docs/images/player.png" alt="The player, with the artist's picture and lyrics" width="430"><br><sub>Player</sub></td>
 <td align="center"><img src="docs/images/games.png" alt="Profiles, with your games found from your launchers" width="430"><br><sub>Profiles</sub></td>
 </tr>
 <tr>

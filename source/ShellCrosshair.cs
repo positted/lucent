@@ -263,6 +263,41 @@ namespace Lucent
             paint();
             return chip;
         }
+        static void SetSliderCaption(FrameworkElement row,string text)
+        {
+            var grid=row as Grid;if(grid==null)return;
+            foreach(var child in grid.Children)if(child is TextBlock&&Grid.GetColumn((UIElement)child)==0){((TextBlock)child).Text=text;return;}
+        }
+        // A chain-link button: linked, the crosshair is the same along X and Y; broken, X and Y are set apart.
+        Button CrosshairLinkChip()
+        {
+            var icon=new System.Windows.Shapes.Path {Stroke=Brushes.White,StrokeThickness=2,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round,Width=16,Height=16,Stretch=Stretch.Uniform,VerticalAlignment=VerticalAlignment.Center};
+            var label=new TextBlock {FontSize=12,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(8,0,0,0)};
+            var content=new StackPanel {Orientation=Orientation.Horizontal};content.Children.Add(icon);content.Children.Add(label);
+            Button chip=null;
+            chip=Action("",()=>
+            {
+                // Unlinking starts Y where it is now, so nothing moves until a Y slider is used.
+                if(CrosshairLook.Linked){CrosshairLook.LengthY=CrosshairLook.Length;CrosshairLook.GapY=CrosshairLook.Gap;}
+                CrosshairLook.Linked=!CrosshairLook.Linked;
+                SyncCrosshairControls();
+                CrosshairChanged(true);
+            });
+            chip.Content=content;chip.Padding=new Thickness(12,8,12,8);chip.Margin=new Thickness(0,0,0,8);
+            System.Windows.Automation.AutomationProperties.SetName(chip,"Link X and Y");
+            Action paint=()=>
+            {
+                bool linked=CrosshairLook.Linked;
+                // Two links joined, or pulled apart.
+                icon.Data=Geometry.Parse(linked?"M9.5,14.5 L14.5,9.5 M11,6.5 L13,4.5 A3.5,3.5 0 0 1 19.5,11 L17.5,13 M13,17.5 L11,19.5 A3.5,3.5 0 0 1 4.5,13 L6.5,11"
+                                                :"M11,6.5 L13,4.5 A3.5,3.5 0 0 1 19.5,11 L17.5,13 M13,17.5 L11,19.5 A3.5,3.5 0 0 1 4.5,13 L6.5,11 M4,4 L7,7 M20,20 L17,17");
+                label.Text=linked?"X and Y linked":"X and Y separate";
+                chip.ToolTip=linked?"The arms are the same along X and Y. Click to set X and Y apart.":"Left and right (X) and top and bottom (Y) have their own length and gap. Click to link them.";
+                chip.Background=linked?optionSurface:selectionSurface;
+            };
+            crosshairSync.Add(paint);paint();
+            return chip;
+        }
         FrameworkElement CrosshairShapeCard()
         {
             var card=new StackPanel();
@@ -272,9 +307,22 @@ namespace Lucent
             arms.Children.Add(ArmChip("Bottom",()=>CrosshairLook.Bottom,v=>CrosshairLook.Bottom=v));
             arms.Children.Add(ArmChip("Left",()=>CrosshairLook.Left,v=>CrosshairLook.Left=v));
             card.Children.Add(arms);
-            card.Children.Add(CrosshairSlider("Arm length",0,40,()=>CrosshairLook.Length,v=>CrosshairLook.Length=v,""));
+            // The link: on, one length and gap for all four arms; off, the left and right arms (X) and the top and bottom arms (Y) each have their own.
+            card.Children.Add(CrosshairLinkChip());
+            var lengthX=CrosshairSlider("Arm length",0,40,()=>CrosshairLook.Length,v=>CrosshairLook.Length=v,"");
+            var lengthY=CrosshairSlider("Length Y",0,40,()=>CrosshairLook.LengthY,v=>CrosshairLook.LengthY=v,"");
+            var gapX=CrosshairSlider("Gap",0,30,()=>CrosshairLook.Gap,v=>CrosshairLook.Gap=v,"");
+            var gapY=CrosshairSlider("Gap Y",0,30,()=>CrosshairLook.GapY,v=>CrosshairLook.GapY=v,"");
+            card.Children.Add(lengthX);card.Children.Add(lengthY);
             card.Children.Add(CrosshairSlider("Thickness",1,10,()=>CrosshairLook.Thickness,v=>CrosshairLook.Thickness=v,""));
-            card.Children.Add(CrosshairSlider("Gap",0,30,()=>CrosshairLook.Gap,v=>CrosshairLook.Gap=v,""));
+            card.Children.Add(gapX);card.Children.Add(gapY);
+            Action showAxes=()=>
+            {
+                bool split=!CrosshairLook.Linked;
+                lengthY.Visibility=gapY.Visibility=split?Visibility.Visible:Visibility.Collapsed;
+                SetSliderCaption(lengthX,split?"Length X":"Arm length");SetSliderCaption(gapX,split?"Gap X":"Gap");
+            };
+            crosshairSync.Add(showAxes);showAxes();
             card.Children.Add(CrosshairSlider("Turn",0,45,()=>CrosshairLook.Rotation,v=>CrosshairLook.Rotation=v,"°"));
             card.Children.Add(CrosshairToggle("Center dot",()=>CrosshairLook.Dot,v=>CrosshairLook.Dot=v));
             card.Children.Add(CrosshairSlider("Dot size",1,12,()=>CrosshairLook.DotSize,v=>CrosshairLook.DotSize=v,""));

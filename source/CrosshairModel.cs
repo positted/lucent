@@ -20,8 +20,14 @@ namespace Lucent
         public string FillColor="#FFFFFF",OutlineColor="#000000";
         public bool Outline=true;
         public int OutlineThickness=1;
+        // Linked: the top and bottom arms have the same length and gap as the left and right ones. Unlinked, they have their own (LengthY, GapY).
+        public bool Linked=true;
+        public int LengthY=7,GapY=4;
         public CrosshairSettings Copy(){return (CrosshairSettings)MemberwiseClone();}
-        public bool HasArms {get{return Length>0&&(Top||Right||Bottom||Left);}}
+        // The length and gap of the top and bottom arms as drawn.
+        public int VerticalLength {get{return Linked?Length:LengthY;}}
+        public int VerticalGap {get{return Linked?Gap:GapY;}}
+        public bool HasArms {get{return (Length>0&&(Left||Right))||(VerticalLength>0&&(Top||Bottom));}}
         static int Limit(int value,int min,int max){return Math.Max(min,Math.Min(max,value));}
         // Settings arrive from disk and from pasted codes, so every value is pulled back into range.
         public void Clamp()
@@ -30,6 +36,7 @@ namespace Lucent
             Name=Name.Replace(';',' ').Replace('|',' ').Trim();
             if(Name.Length>24)Name=Name.Substring(0,24);
             Length=Limit(Length,0,40);Thickness=Limit(Thickness,1,10);Gap=Limit(Gap,0,30);
+            LengthY=Limit(LengthY,0,40);GapY=Limit(GapY,0,30);
             DotSize=Limit(DotSize,1,12);RingRadius=Limit(RingRadius,3,40);RingThickness=Limit(RingThickness,1,6);
             // The ring was removed. Old saved looks and codes that had one simply load without it.
             Ring=false;
@@ -120,7 +127,8 @@ namespace Lucent
             string body=string.Join(";",new[]{s.Name,flag(s.Top)+flag(s.Right)+flag(s.Bottom)+flag(s.Left),s.Length.ToString(CultureInfo.InvariantCulture),s.Thickness.ToString(CultureInfo.InvariantCulture),s.Gap.ToString(CultureInfo.InvariantCulture),
                 flag(s.Dot)+flag(s.SquareDot),s.DotSize.ToString(CultureInfo.InvariantCulture),flag(s.Ring),s.RingRadius.ToString(CultureInfo.InvariantCulture),s.RingThickness.ToString(CultureInfo.InvariantCulture),
                 s.Rotation.ToString(CultureInfo.InvariantCulture),s.Opacity.ToString(CultureInfo.InvariantCulture),s.OffsetX.ToString(CultureInfo.InvariantCulture),s.OffsetY.ToString(CultureInfo.InvariantCulture),
-                s.FillColor,flag(s.Outline),s.OutlineColor,s.OutlineThickness.ToString(CultureInfo.InvariantCulture)});
+                s.FillColor,flag(s.Outline),s.OutlineColor,s.OutlineThickness.ToString(CultureInfo.InvariantCulture),
+                flag(s.Linked),s.LengthY.ToString(CultureInfo.InvariantCulture),s.GapY.ToString(CultureInfo.InvariantCulture)});
             return Prefix+Convert.ToBase64String(Encoding.UTF8.GetBytes(body));
         }
         // Null when the text is not a crosshair code.
@@ -132,7 +140,8 @@ namespace Lucent
             try
             {
                 var parts=Encoding.UTF8.GetString(Convert.FromBase64String(code.Substring(Prefix.Length))).Split(';');
-                if(parts.Length!=18||parts[1].Length!=4||parts[5].Length!=2)return null;
+                // 18 parts in older codes; 21 since the vertical arms can have their own length and gap.
+                if((parts.Length!=18&&parts.Length!=21)||parts[1].Length!=4||parts[5].Length!=2)return null;
                 var ints=new int[18];
                 foreach(int index in new[]{2,3,4,6,8,9,10,11,12,13,17})if(!int.TryParse(parts[index],NumberStyles.Integer,CultureInfo.InvariantCulture,out ints[index]))return null;
                 Func<char,bool> on=c=>c=='1';
@@ -143,6 +152,13 @@ namespace Lucent
                     Ring=parts[7]=="1",RingRadius=ints[8],RingThickness=ints[9],Rotation=ints[10],Opacity=ints[11],OffsetX=ints[12],OffsetY=ints[13],
                     FillColor=parts[14],Outline=parts[15]=="1",OutlineColor=parts[16],OutlineThickness=ints[17]
                 };
+                if(parts.Length==21)
+                {
+                    int lengthY,gapY;
+                    if(!int.TryParse(parts[19],NumberStyles.Integer,CultureInfo.InvariantCulture,out lengthY)||!int.TryParse(parts[20],NumberStyles.Integer,CultureInfo.InvariantCulture,out gapY))return null;
+                    s.Linked=parts[18]!="0";s.LengthY=lengthY;s.GapY=gapY;
+                }
+                else{s.Linked=true;s.LengthY=s.Length;s.GapY=s.Gap;}
                 s.Clamp();
                 return s;
             }
@@ -156,7 +172,7 @@ namespace Lucent
         public static int Extent(CrosshairSettings s)
         {
             int reach=(s.Thickness+1)/2;
-            if(s.HasArms)reach=Math.Max(reach,s.Gap+s.Length);
+            if(s.HasArms)reach=Math.Max(reach,Math.Max(s.Gap+s.Length,s.VerticalGap+s.VerticalLength));
             if(s.Dot)reach=Math.Max(reach,(DotPixels(s)+1)/2);
             return reach+(s.Outline?s.OutlineThickness:0)+1;
         }
@@ -195,7 +211,7 @@ namespace Lucent
                     double px=x-middle,py=y-middle;
                     int u=s.Rotation==0?x:(int)Math.Round(px*cos+py*sin+middle),v=s.Rotation==0?y:(int)Math.Round(-px*sin+py*cos+middle);
                     on=(s.Right&&InRun(u,s.Gap,s.Length,true,0)&&InBand(v,s.Thickness))||(s.Left&&InRun(u,s.Gap,s.Length,false,shift)&&InBand(v,s.Thickness))
-                        ||(s.Bottom&&InRun(v,s.Gap,s.Length,true,0)&&InBand(u,s.Thickness))||(s.Top&&InRun(v,s.Gap,s.Length,false,shift)&&InBand(u,s.Thickness));
+                        ||(s.Bottom&&InRun(v,s.VerticalGap,s.VerticalLength,true,0)&&InBand(u,s.Thickness))||(s.Top&&InRun(v,s.VerticalGap,s.VerticalLength,false,shift)&&InBand(u,s.Thickness));
                 }
                 if(!on&&s.Dot)
                 {

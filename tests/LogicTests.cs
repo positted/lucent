@@ -98,6 +98,20 @@ internal static class LogicTests
         var custom=CrosshairPresets.Create("T");custom.Name="My look";custom.Length=12;custom.Gap=5;custom.Thickness=3;custom.Rotation=20;custom.Opacity=70;custom.OffsetX=-4;custom.OffsetY=6;custom.FillColor="#19E5A7";custom.OutlineColor="#102030";custom.OutlineThickness=2;custom.Dot=true;custom.SquareDot=true;custom.DotSize=5;
         var decoded=CrosshairCode.Decode(CrosshairCode.Encode(custom));
         Check(decoded!=null&&CrosshairCode.Encode(decoded)==CrosshairCode.Encode(custom)&&decoded.Name=="My look"&&decoded.Left&&!decoded.Top&&decoded.FillColor=="#19E5A7","Crosshair code round trip");
+        {
+            // X and Y apart: the top and bottom arms take their own length and gap; codes carry it, and older codes load linked.
+            var split=CrosshairPresets.Create("Cross");split.Name="split";split.Rotation=0;split.Dot=false;split.Length=10;split.Gap=2;split.Linked=false;split.LengthY=4;split.GapY=6;split.Thickness=1;split.Clamp();
+            int ext=CrosshairRenderer.Extent(split);var mask=CrosshairRenderer.Fill(split,ext);
+            Check(mask[ext+11,ext]&&!mask[ext+12,ext],"The X arms should reach 2+10 pixels");
+            Check(mask[ext,ext+9]&&!mask[ext,ext+10]&&!mask[ext,ext+5],"The Y arms should run from gap 6 for 4 pixels");
+            var splitBack=CrosshairCode.Decode(CrosshairCode.Encode(split));
+            Check(splitBack!=null&&!splitBack.Linked&&splitBack.LengthY==4&&splitBack.GapY==6&&splitBack.VerticalLength==4,"The X/Y split did not survive a code");
+            split.Linked=true;Check(split.VerticalLength==10&&split.VerticalGap==2,"Linked should use one length and gap");
+            string body="Old;1111;7;2;4;00;3;0;10;2;0;100;0;0;#FFFFFF;1;#000000;1";
+            var old=CrosshairCode.Decode("LCX1-"+Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(body)));
+            Check(old!=null&&old.Linked&&old.VerticalLength==7,"An older code should still load, linked");
+            Console.WriteLine("PASS: crosshair X and Y can be set apart (own length and gap for the top and bottom arms), carried in codes; older codes load linked.");
+        }
         Check(CrosshairCode.Decode("")==null&&CrosshairCode.Decode("hello")==null&&CrosshairCode.Decode("LCX1-!!!")==null&&CrosshairCode.Decode("LCX1-"+Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("a;b")))==null,"Bad codes must be refused");
         var wild=custom.Copy();wild.Length=999;wild.Opacity=-5;wild.FillColor="nonsense";var tamed=CrosshairCode.Decode(CrosshairCode.Encode(wild));Check(tamed!=null&&tamed.Length==40&&tamed.Opacity==20&&tamed.FillColor=="#FFFFFF","A code with wild values was not tamed");
         Func<string,Preferences> loadXml=xml=>{var p=(Preferences)new System.Xml.Serialization.XmlSerializer(typeof(Preferences)).Deserialize(new StringReader(xml));StateStore.Normalize(p);return p;};

@@ -103,7 +103,7 @@ namespace Lucent
             var scale = new Grid { Margin = new Thickness(13, 0, 13, 0) };
             for (int step = 0; step < 3; step++)
             {
-                var tick = Text(step==0?"100% · Neutral":step==2?"300% · Max":(100 + step * 100).ToString() + "%", 13);
+                var tick = Text(step==0?"100% · Neutral":step==2?"300%":(100 + step * 100).ToString() + "%", 13);
                 tick.Foreground = Muted;
                 tick.HorizontalAlignment = step == 0 ? HorizontalAlignment.Left
                     : step == 1 ? HorizontalAlignment.Center : HorizontalAlignment.Right;
