@@ -273,7 +273,7 @@ namespace Lucent
             badge.Children.Add(new TextBlock {Text="v"+Design.Version,FontSize=13,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});
             hero.Children.Add(new Border {Child=badge,Background=new SolidColorBrush(Color.FromArgb(38,255,255,255)),CornerRadius=new CornerRadius(15),Padding=new Thickness(13,6,15,6),HorizontalAlignment=HorizontalAlignment.Center});
             string built=System.IO.File.GetLastWriteTime(System.Reflection.Assembly.GetExecutingAssembly().Location).ToString("d MMM yyyy",System.Globalization.CultureInfo.InvariantCulture);
-            hero.Children.Add(new TextBlock {Text="Version "+Design.Version+" \u00B7 Built "+built,FontSize=12,Foreground=Muted,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,10,0,14)});
+            hero.Children.Add(new TextBlock {Text="Version "+Design.Version+(Design.Snapshot==null?"":" \u00B7 Snapshot "+Design.Snapshot)+" \u00B7 Built "+built,FontSize=12,Foreground=Muted,HorizontalAlignment=HorizontalAlignment.Center,Margin=new Thickness(0,10,0,14)});
             var copyLabel=new TextBlock {Text="Copy version info",FontSize=14,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center};
             var copyIcon=Design.SettingsIcon("Copy",16,new SolidColorBrush(Color.FromRgb(17,17,17)));
             copyIcon.Margin=new Thickness(0,0,10,0);
@@ -282,7 +282,7 @@ namespace Lucent
             copyRow.Children.Add(copyLabel);
             var copy=Action("",async()=>
             {
-                if(!TestMode)Clipboard.SetText("Lucent "+Design.Version+" ("+Environment.OSVersion.VersionString+")");
+                if(!TestMode)Clipboard.SetText("Lucent "+Design.Version+(Design.Snapshot==null?"":" snapshot "+Design.Snapshot)+" ("+Environment.OSVersion.VersionString+")");
                 copyLabel.Text="Copied";
                 await System.Threading.Tasks.Task.Delay(1400);
                 copyLabel.Text="Copy version info";

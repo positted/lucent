@@ -125,7 +125,7 @@ class ReadmeShots
   }  // Made-up numbers for Your PC, so the rings show percentages and temperatures in the pictures (nothing is measured here).
   shell.ShowSystemStats(new SystemSnapshot{Cpu=37,CpuTemp=58,RamUsedGb=19.8,RamTotalGb=31.9,Gpu=64,GpuTemp=66,VramUsedGb=6.1,VramTotalGb=12,GpuName="Fixture"});
   // Each cover on Home: the colors follow the cover.
-  bool quick=Environment.GetEnvironmentVariable("LUCENT_ONLY")=="quick"||Environment.GetEnvironmentVariable("LUCENT_ONLY")=="color"||Environment.GetEnvironmentVariable("LUCENT_ONLY")=="settings";
+  bool quick=Environment.GetEnvironmentVariable("LUCENT_ONLY")=="quick"||Environment.GetEnvironmentVariable("LUCENT_ONLY")=="color"||Environment.GetEnvironmentVariable("LUCENT_ONLY")=="settings"||Environment.GetEnvironmentVariable("LUCENT_ONLY")=="about";
   foreach(var file in (quick?covers.Take(0):covers))
   {
    play(file);await Task.Delay(2600);
@@ -149,6 +149,7 @@ class ReadmeShots
   ((System.Windows.Controls.Slider)((IDictionary)F(shell,"sliders").GetValue(shell))["Vibrance"]).Value=300;await Task.Delay(1200);
   Shot(shell,Path.Combine(output,"color-300.png"));
   if(Environment.GetEnvironmentVariable("LUCENT_ONLY")=="settings"){Call(shell,"SetSettingsOpen",true);await Task.Delay(1900);Shot(shell,Path.Combine(output,"settings-grid.png"));shell.Close();stage.Close();Console.WriteLine("PASS: settings picture written to "+output);return;}
+  if(Environment.GetEnvironmentVariable("LUCENT_ONLY")=="about"){Call(shell,"SetSettingsOpen",true);await Task.Delay(900);Call(shell,"SelectSettingsCategory","About");await Task.Delay(1200);Shot(shell,Path.Combine(output,"settings-about.png"));shell.Close();stage.Close();Console.WriteLine("PASS: about picture written to "+output);return;}
   if(Environment.GetEnvironmentVariable("LUCENT_ONLY")=="color"){shell.Close();stage.Close();Console.WriteLine("PASS: color picture written to "+output);return;}
   ((System.Windows.Controls.Slider)((IDictionary)F(shell,"sliders").GetValue(shell))["Vibrance"]).Value=100;
   Call(shell,"ShowPage","Game Boost");await Task.Delay(1400);Shot(shell,Path.Combine(output,"boost.png"));

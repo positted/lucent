@@ -935,7 +935,7 @@ await Until(()=>((UIElement)Field(shell,"settingsLayer")).Visibility!=Visibility
   var content=(ContentControl)Field(shell,"settingsContent");var buttons=(IDictionary)Field(shell,"settingsCategoryButtons");var cards=(IDictionary)Field(shell,"settingsCards");
   Call(shell,"SetSettingsOpen",true);await Task.Delay(420);shell.UpdateLayout();await Until(()=>{shell.UpdateLayout();return cards.Values.Cast<FrameworkElement>().All(c=>c.IsVisible&&c.ActualWidth>140);},2500);
   Check((bool)Field(shell,"settingsOverviewShown")&&ReferenceEquals(content.Content,Field(shell,"settingsOverview")),"Settings should open on the grid of categories");
-  Check(cards.Count==8&&cards.Count==buttons.Count&&cards.Values.Cast<FrameworkElement>().All(c=>c.IsVisible&&c.ActualWidth>140),"The grid is missing a category card");
+  Check(cards.Count==8&&cards.Count==buttons.Count&&cards.Values.Cast<FrameworkElement>().All(c=>c.IsVisible&&c.ActualWidth>140),"The grid is missing a category card: "+cards.Count+"/"+buttons.Count+" "+string.Join(", ",cards.Keys.Cast<object>().Select(k=>k+"="+((FrameworkElement)cards[k]).IsVisible+"/"+((FrameworkElement)cards[k]).ActualWidth.ToString("0"))));
   Check(!((FrameworkElement)Field(shell,"settingsBack")).IsVisible,"The back button should not show on the grid");
   var appearance=Visuals<Button>(content).First(b=>System.Windows.Automation.AutomationProperties.GetName(b)=="Appearance");appearance.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));shell.UpdateLayout();await Task.Delay(300);
   Check(!(bool)Field(shell,"settingsOverviewShown")&&(string)Field(shell,"settingsCategory")=="Appearance"&&((FrameworkElement)Field(shell,"settingsBack")).IsVisible,"Clicking a card did not open its category with a back button");

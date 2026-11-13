@@ -267,7 +267,16 @@ namespace Lucent
                 return named.Length>0&&!string.IsNullOrEmpty(named[0].InformationalVersion)?named[0].InformationalVersion:Updates.Show(typeof(Design).Assembly.GetName().Version);
             }
         }
-        public static readonly FontFamily Font=LoadFont();
+        // The snapshot (test build) number from AssemblyInfo.cs, or null in a build without one.
+        public static string Snapshot
+        {
+            get
+            {
+                foreach(System.Reflection.AssemblyMetadataAttribute item in typeof(Design).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute),false))
+                    if(item.Key=="Snapshot"&&!string.IsNullOrWhiteSpace(item.Value))return item.Value.Trim();
+                return null;
+            }
+        }        public static readonly FontFamily Font=LoadFont();
         public static readonly FontFamily DisplayFont=LoadDisplayFont();
         // Large headings use Inter's display cut when it ships with the app, otherwise the regular cut.
         static FontFamily LoadDisplayFont()
