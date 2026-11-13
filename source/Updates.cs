@@ -83,7 +83,8 @@ namespace Lucent
             var version=ParseVersion(tag);
             if(version==null)return null;
             string notes=text("body")??text("notes")??"";
-            if(notes.Length>600)notes=notes.Substring(0,600).TrimEnd()+"…";
+            // The whole notes are kept (the app shows the start and a Show more); only a runaway text is cut.
+            if(notes.Length>8000)notes=notes.Substring(0,8000).TrimEnd()+"\u2026";
             var info=new UpdateInfo {Latest=version,Tag=tag.Trim(),Url=text("html_url")??text("url"),Notes=PlainNotes(notes)};
             // The setup file attached to the release, if there is one.
             object assets;
@@ -117,6 +118,16 @@ namespace Lucent
                 lines.Add(line);
             }
             return Regex.Replace(string.Join("\n",lines),@"\n{3,}","\n\n").Trim();
+        }
+        // The start of the notes: the first lines, up to about the room of the old cut.
+        internal static string NotesPreview(string notes)
+        {
+            if(string.IsNullOrEmpty(notes))return "";
+            var lines=notes.Split('\n');
+            if(lines.Length<=7&&notes.Length<=520)return notes;
+            string start=string.Join("\n",lines,0,Math.Min(7,lines.Length));
+            if(start.Length>520)start=start.Substring(0,520).TrimEnd();
+            return start.TrimEnd()+"\u2026";
         }
         // Only a secure web address is ever opened from an update notice.
         internal static bool CanOpen(string url){return !string.IsNullOrEmpty(url)&&url.StartsWith("https://",StringComparison.OrdinalIgnoreCase)&&Uri.IsWellFormedUriString(url,UriKind.Absolute);}

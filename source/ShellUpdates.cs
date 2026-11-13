@@ -110,8 +110,9 @@ namespace Lucent
             titles.Children.Add(new TextBlock {Text="Lucent "+Updates.Show(info.Latest)+" is ready. You have "+Design.Version+".",FontSize=13,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,3,0,0)});
             head.Children.Add(titles);stack.Children.Add(head);
             if(!string.IsNullOrWhiteSpace(info.Notes))
-                stack.Children.Add(new Border {Background=new SolidColorBrush(Color.FromRgb(36,36,38)),CornerRadius=new CornerRadius(12),Padding=new Thickness(14,10,14,10),Margin=new Thickness(0,0,0,12),MaxHeight=110,
-                    Child=new TextBlock {Text=info.Notes,FontSize=13,Foreground=Muted,TextWrapping=TextWrapping.Wrap}});
+                // The notes scroll inside their box (wheel or keys), so all of them can be read without the popup growing past the window.
+                stack.Children.Add(new Border {Background=new SolidColorBrush(Color.FromRgb(36,36,38)),CornerRadius=new CornerRadius(12),Padding=new Thickness(14,10,6,10),Margin=new Thickness(0,0,0,12),
+                    Child=new ScrollViewer {MaxHeight=150,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Padding=new Thickness(0,0,8,0),Content=new TextBlock {Text=info.Notes,FontSize=13,Foreground=Muted,TextWrapping=TextWrapping.Wrap}}});
             var status=new TextBlock {FontSize=13,Foreground=Muted,TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,0,0,10),Visibility=Visibility.Collapsed};
             var bar=new ProgressBar {Height=8,Minimum=0,Maximum=100,Margin=new Thickness(0,0,0,14),Visibility=Visibility.Collapsed};
             stack.Children.Add(status);stack.Children.Add(bar);
@@ -181,9 +182,14 @@ namespace Lucent
             bool newer=updateInfo!=null;
             updateOpen.Visibility=newer&&Updates.CanOpenRelease(updateInfo.Url)?Visibility.Visible:Visibility.Collapsed;
             if(newer)updateOpen.Content="Get "+Updates.Show(updateInfo.Latest);
-            updateNotes.Text=newer?updateInfo.Notes:"";
-            updateNotes.Visibility=newer&&updateInfo.Notes.Length>0?Visibility.Visible:Visibility.Collapsed;
+            string notes=newer?updateInfo.Notes:"";
+            bool longNotes=Updates.NotesPreview(notes)!=notes;
+            updateNotes.Text=updateNotesOpen||!longNotes?notes:Updates.NotesPreview(notes);
+            updateNotes.Visibility=notes.Length>0?Visibility.Visible:Visibility.Collapsed;
+            updateMore.Visibility=longNotes?Visibility.Visible:Visibility.Collapsed;
+            updateMore.Content=updateNotesOpen?"Show less":"Show more";
         }
+        bool updateNotesOpen;Button updateMore;
         void OpenUpdatePage()
         {
             if(updateInfo==null||!Updates.CanOpenRelease(updateInfo.Url))return;
@@ -200,6 +206,9 @@ namespace Lucent
             block.Children.Add(updateStatus);
             updateNotes=new TextBlock {FontSize=12,TextWrapping=TextWrapping.Wrap,Foreground=Muted,Margin=new Thickness(0,8,0,0),Visibility=Visibility.Collapsed};
             block.Children.Add(updateNotes);
+            updateMore=Action("Show more",()=>{updateNotesOpen=!updateNotesOpen;ShowUpdateText(updateStatus.Text);});
+            updateMore.Style=(Style)Resources["TextAction"];updateMore.Margin=new Thickness(0,4,0,0);updateMore.Visibility=Visibility.Collapsed;
+            block.Children.Add(updateMore);
             var buttons=new WrapPanel {Margin=new Thickness(0,10,0,0)};
             updateCheck=Action("Check for updates",async()=>await CheckForUpdates(true));
             updateOpen=Action("Get update",OpenUpdatePage);

@@ -63,7 +63,7 @@ namespace Lucent
         readonly Dictionary<string,SectionPanel> settingsSections=new Dictionary<string,SectionPanel>();
         readonly Dictionary<string,Button> settingsCategoryButtons=new Dictionary<string,Button>();
         ContentControl settingsContent;
-        TextBlock settingsHeading,settingsDescription;
+        TextBlock settingsHeading,settingsDescription;FrameworkElement settingsTitleGear;
         string settingsCategory="Appearance";
         bool settingsOpen;
         int settingsTransition;
@@ -199,7 +199,7 @@ namespace Lucent
             {
                 bool active=(string)button.Tag==page||((string)button.Tag=="Settings"&&settingsOpen);
                 button.Background=Brushes.Transparent;
-                var icon=button.Content as UIElement;if(icon!=null){icon.BeginAnimation(OpacityProperty,null);icon.Opacity=active?1:.62;}
+                var icon=button.Content as UIElement;if(icon!=null){icon.BeginAnimation(OpacityProperty,null);icon.Opacity=active?((string)button.Tag=="Settings"?.72:1):.62;}
             }
             MoveTabPill(IsLoaded);
         }
@@ -831,7 +831,11 @@ namespace Lucent
             settingsHeading=Text("Appearance",18,true);
             settingsDescription=Text("",13);
             settingsDescription.Foreground=Muted;
-            labels.Children.Add(settingsHeading);
+            // On the grid of categories the title has the settings gear beside it (a category shows its back button there instead).
+            settingsTitleGear=Design.RailIcon("Settings",18);settingsTitleGear.Margin=new Thickness(0,-3,8,0);settingsTitleGear.VerticalAlignment=VerticalAlignment.Center;
+            var titleRow=new StackPanel {Orientation=Orientation.Horizontal};
+            titleRow.Children.Add(settingsTitleGear);titleRow.Children.Add(settingsHeading);
+            labels.Children.Add(titleRow);
             labels.Children.Add(settingsDescription);
             heading.Children.Add(labels);
             settingsContent=new ContentControl {Focusable=false,Margin=new Thickness(22,0,18,20),RenderTransform=new TranslateTransform()};
@@ -920,6 +924,9 @@ namespace Lucent
             settingsBack.Visibility=Visibility.Collapsed;
             settingsHeading.Text="Settings";
             settingsDescription.Text="Pick a category.";
+            settingsTitleGear.Visibility=Visibility.Visible;
+            // The line under the title starts where the word Settings starts, not under the gear.
+            settingsDescription.Margin=new Thickness(26,0,0,0);
             if(switching)
             {
                 var rise=(TranslateTransform)settingsContent.RenderTransform;
@@ -963,6 +970,8 @@ namespace Lucent
             }
             settingsHeading.Text=name;
             settingsDescription.Text=SettingsBlurb(name);
+            settingsTitleGear.Visibility=Visibility.Collapsed;
+            settingsDescription.Margin=new Thickness(0);
             if(panel.Children.Count>0&&panel.Children[0] is TextBlock)panel.Children[0].Visibility=Visibility.Collapsed;
             foreach(var item in settingsCategoryButtons)SetCategoryInk(item.Value,item.Key==name||item.Value.IsMouseOver);
             MoveSettingsPill(true);
@@ -1069,7 +1078,7 @@ namespace Lucent
                 AimSettingsOrigin();
                 settingsCard.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
             }
-            foreach(var gear in new[]{settingsRailButton,settingsOverlayGear})Design.Animate((UIElement)gear.Content,OpacityProperty,open?.57:1,open?1:.57,180);
+            foreach(var gear in new[]{settingsRailButton,settingsOverlayGear})Design.Animate((UIElement)gear.Content,OpacityProperty,open?.57:.72,open?.72:.57,180);   // Open, the gear is only a little brighter than at rest, not a bright glow.
             // Behind settings is a blurred copy of the window. While the colors drift that copy changes every frame, so the whole window was blurred again at every
             // step: the colors rest while settings is open, and the card moves as one picture, so each step only moves pictures.
             if(!TestMode){flowBackdrop.Hold(true);settingsCard.CacheMode=new BitmapCache(VisualTreeHelper.GetDpi(this).DpiScaleX);}

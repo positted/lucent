@@ -945,7 +945,7 @@ await Until(()=>((UIElement)Field(shell,"settingsLayer")).Visibility!=Visibility
   // About: every button works in test mode without opening anything or touching the clipboard.
   Call(shell,"SelectSettingsCategory","About");shell.UpdateLayout();await Task.Delay(300);
   var about=(DependencyObject)content.Content;var words=Visuals<SmoothText>(about).Select(t=>t.Text).ToArray();Check(words.Contains("v"+Design.Version)&&words.Contains("lucent")&&words.Any(w=>w.StartsWith("Version "+Design.Version)),"About is missing its version");
-  var actions=Visuals<Button>(about).ToArray();Check(actions.Length==9,"About buttons (copy, GitHub, Ko-fi, Report a bug, three folders and files, then check and get of Updates): "+actions.Length);foreach(var action in actions)action.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(Visuals<SmoothText>(about).Any(t=>t.Text=="Copied"),"Copy did not confirm");
+  var actions=Visuals<Button>(about).ToArray();Check(actions.Length==10,"About buttons (copy, GitHub, Ko-fi, Report a bug, three folders and files, then show more, check and get of Updates): "+actions.Length);foreach(var action in actions)action.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Check(Visuals<SmoothText>(about).Any(t=>t.Text=="Copied"),"Copy did not confirm");
   Call(shell,"SelectSettingsCategory","Appearance");Call(shell,"SetSettingsOpen",false);await Task.Delay(360);
  } static async Task CheckPlayerDock(Shell shell)
  {
