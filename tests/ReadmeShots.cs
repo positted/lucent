@@ -114,8 +114,8 @@ class ReadmeShots
   {
    // The update panel and a notice, as they look at the top right.
    play(covers[0]);Call(shell,"ShowPage","Home");await Task.Delay(1500);
-   Lucent.Updates.Source="positted/lucent";
-   Lucent.Updates.Fetcher=url=>"{\"tag_name\":\"v1.1127\",\"html_url\":\"https://github.com/positted/lucent/releases/tag/v1.1127\",\"body\":\"A new player, vibrance up to 300%, and Customize Home.\"}";
+   Lucent.Updates.Source="getlucent/lucent";
+   Lucent.Updates.Fetcher=url=>"{\"tag_name\":\"v1.1127\",\"html_url\":\"https://github.com/getlucent/lucent/releases/tag/v1.1127\",\"body\":\"A new player, vibrance up to 300%, and Customize Home.\"}";
    await (Task)Call(shell,"CheckForUpdates",true);await Task.Delay(900);
    Shot(shell,Path.Combine(output,"update-panel.png"));
    Call(shell,"HideUpdatePopup");await Task.Delay(300);

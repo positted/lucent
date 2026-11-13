@@ -20,7 +20,11 @@ namespace Lucent
     {
         // Where releases are announced: the project's GitHub repository. It is fixed in the program, so Lucent only ever checks (and sends
         // people to) this one place. Tests replace Source; nothing in the settings can.
-        public const string DefaultSource="positted/lucent";
+        public const string DefaultSource="getlucent/lucent";
+        // Where the project lived before it moved to the getlucent organization. GitHub sends the old address on to the new one, so pages and
+        // downloads under either are the project's own.
+        internal const string FormerSource="positted/lucent";
+        static System.Collections.Generic.IEnumerable<string> Homes(){yield return Source;if(string.Equals(Source,DefaultSource,StringComparison.OrdinalIgnoreCase))yield return FormerSource;}
         internal static string Source=DefaultSource;
 
         public static Version Current{get{return typeof(Updates).Assembly.GetName().Version;}}
@@ -105,7 +109,8 @@ namespace Lucent
         {
             if(!CanOpen(url))return false;
             if(!Regex.IsMatch(Source??"",@"^[A-Za-z0-9_.-]{1,60}/[A-Za-z0-9_.-]{1,100}$"))return true;
-            return url.StartsWith("https://github.com/"+Source+"/",StringComparison.OrdinalIgnoreCase);
+            foreach(string home in Homes())if(url.StartsWith("https://github.com/"+home+"/",StringComparison.OrdinalIgnoreCase))return true;
+            return false;
         }
 
         // The setup file may only come from this project's own releases, over https.
@@ -114,7 +119,9 @@ namespace Lucent
             Uri uri;
             if(!CanOpen(url)||!Uri.TryCreate(url,UriKind.Absolute,out uri))return false;
             if(!Regex.IsMatch(Source??"",@"^[A-Za-z0-9_.-]{1,60}/[A-Za-z0-9_.-]{1,100}$"))return false;
-            return uri.Host.Equals("github.com",StringComparison.OrdinalIgnoreCase)&&uri.AbsolutePath.StartsWith("/"+Source+"/releases/download/",StringComparison.OrdinalIgnoreCase);
+            if(!uri.Host.Equals("github.com",StringComparison.OrdinalIgnoreCase))return false;
+            foreach(string home in Homes())if(uri.AbsolutePath.StartsWith("/"+home+"/releases/download/",StringComparison.OrdinalIgnoreCase))return true;
+            return false;
         }
         // Saves the release's setup file. Tests replace FileFetcher so nothing is downloaded.
         internal static Action<UpdateInfo,string,Action<long,long>> FileFetcher=SaveSetup;

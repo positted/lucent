@@ -7,7 +7,7 @@
 ### Lucent
 **Display, games and music in one small Windows app. Up to 300% vibrance.**
 
-Free and open source (MIT) · Windows 10 / 11 · **[Download Lucent-Setup.exe](https://github.com/positted/lucent/releases/latest/download/Lucent-Setup.exe)**
+Free and open source (MIT) · Windows 10 / 11 · **[Download Lucent-Setup.exe](https://github.com/getlucent/lucent/releases/latest/download/Lucent-Setup.exe)**
 
 <a href="https://ko-fi.com/lucent_"><img src="docs/images/kofi-banner.svg" alt="Buy me a coffee. Support Lucent on Ko-fi" width="328"></a>
 
@@ -47,7 +47,7 @@ Free and open source (MIT) · Windows 10 / 11 · **[Download Lucent-Setup.exe](h
 <details>
 <summary><b>Windows or my antivirus warns about the setup. Why?</b></summary>
 <br>
-Lucent is a small app by one person and is not code-signed yet, so Windows SmartScreen shows "unknown publisher" and a few antivirus engines flag it by guesswork (machine learning, not a named virus). Nothing in Lucent sends your data anywhere or touches your files. The whole source is here, so you can read it or build it yourself with <code>source/build-local.cmd</code>. If your antivirus flags it, please <a href="https://github.com/positted/lucent/issues">open an issue</a> with the detection name.
+Lucent is a small app by one person and is not code-signed yet, so Windows SmartScreen shows "unknown publisher" and a few antivirus engines flag it by guesswork (machine learning, not a named virus). Nothing in Lucent sends your data anywhere or touches your files. The whole source is here, so you can read it or build it yourself with <code>source/build-local.cmd</code>. If your antivirus flags it, please <a href="https://github.com/getlucent/lucent/issues">open an issue</a> with the detection name.
 </details>
 
 <details>
@@ -70,4 +70,4 @@ WPF, C# 5, .NET Framework 4.8. Build with <code>source/build-local.cmd</code>, t
 
 ## License
 
-[MIT](LICENSE). Made by [@positted](https://github.com/positted), with [Claude](https://claude.com/claude-code) as a contributor. [Report a bug](https://github.com/positted/lucent/issues) or say hello in [Discussions](https://github.com/positted/lucent/discussions).
+[MIT](LICENSE). Made by [@positted](https://github.com/positted), with [Claude](https://claude.com/claude-code) as a contributor. [Report a bug](https://github.com/getlucent/lucent/issues) or say hello in [Discussions](https://github.com/getlucent/lucent/discussions).

@@ -4,7 +4,7 @@ Thanks for helping. Lucent is a small Windows app (WPF, C# 5, .NET Framework 4.8
 
 ## Ways to help
 
-- **Report a bug or idea:** open an [issue](https://github.com/positted/lucent/issues). Say your Windows version, your Lucent version (Settings → About) and what you expected.
+- **Report a bug or idea:** open an [issue](https://github.com/getlucent/lucent/issues). Say your Windows version, your Lucent version (Settings → About) and what you expected.
 - **Send a fix:** keep it small and focused, one change per pull request.
 - **Support it:** star the repository, or [Ko-fi](https://ko-fi.com/lucent_) if you want to (never required).
 
