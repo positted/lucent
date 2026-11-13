@@ -84,7 +84,7 @@ namespace Lucent
             if(version==null)return null;
             string notes=text("body")??text("notes")??"";
             if(notes.Length>600)notes=notes.Substring(0,600).TrimEnd()+"…";
-            var info=new UpdateInfo {Latest=version,Tag=tag.Trim(),Url=text("html_url")??text("url"),Notes=notes.Replace("\r","").Trim()};
+            var info=new UpdateInfo {Latest=version,Tag=tag.Trim(),Url=text("html_url")??text("url"),Notes=PlainNotes(notes)};
             // The setup file attached to the release, if there is one.
             object assets;
             if(data.TryGetValue("assets",out assets)&&assets is System.Collections.IEnumerable&&!(assets is string))
@@ -101,6 +101,23 @@ namespace Lucent
             return info;
         }
         internal static bool IsNewer(UpdateInfo info,Version current){return info!=null&&info.Latest!=null&&Compare(info.Latest,current)>0;}
+        // Release notes are written for GitHub's page (headings with #, **bold**, - lists, [links](...)); in the app they are shown as plain text:
+        // headings as their words, lists with a bullet, and no marks around words.
+        internal static string PlainNotes(string notes)
+        {
+            if(string.IsNullOrEmpty(notes))return "";
+            var lines=new System.Collections.Generic.List<string>();
+            foreach(string raw in notes.Replace("\r","").Split('\n'))
+            {
+                string line=raw.Trim();
+                line=Regex.Replace(line,@"^#{1,6}\s*","");
+                line=Regex.Replace(line,@"^[-*+]\s+","• ");
+                line=Regex.Replace(line,@"\[([^\]]+)\]\([^)]*\)","$1");
+                line=line.Replace("**","").Replace("__","").Replace("`","");
+                lines.Add(line);
+            }
+            return Regex.Replace(string.Join("\n",lines),@"\n{3,}","\n\n").Trim();
+        }
         // Only a secure web address is ever opened from an update notice.
         internal static bool CanOpen(string url){return !string.IsNullOrEmpty(url)&&url.StartsWith("https://",StringComparison.OrdinalIgnoreCase)&&Uri.IsWellFormedUriString(url,UriKind.Absolute);}
 
