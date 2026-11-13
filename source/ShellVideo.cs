@@ -25,6 +25,14 @@ namespace Lucent
     // The Video page: display cards, vibrance, eye care, color vision and the profile summary.
     internal sealed partial class Shell
     {
+        // Takes an element that lives for the whole window out of the page it was in, so a page built again can hold it.
+        static void Adopt(UIElement element)
+        {
+            var parent=element==null?null:VisualTreeHelper.GetParent(element)??LogicalTreeHelper.GetParent(element);
+            var panel=parent as Panel;if(panel!=null){panel.Children.Remove(element);return;}
+            var decorator=parent as Decorator;if(decorator!=null&&ReferenceEquals(decorator.Child,element)){decorator.Child=null;return;}
+            var content=parent as ContentControl;if(content!=null&&ReferenceEquals(content.Content,element))content.Content=null;
+        }
         FrameworkElement VideoPage()
         {
             var stack = new StackPanel { Margin = new Thickness(0, 10, 0, 5) };
@@ -35,6 +43,9 @@ namespace Lucent
             displayStatus.FontSize = 14;displayStatus.Foreground=Muted;
             displayStatus.VerticalAlignment = VerticalAlignment.Center;
             displayStatus.Margin = new Thickness(0, 0, 18, 0);
+            // The status line is one element kept for the life of the window. When a display is plugged in or removed this page is built again, and the line
+            // is still in the old page: it is taken out of there first (adding it while it had a parent was the "already the logical child" error).
+            Adopt(displayStatus);
             header.Children.Add(displayStatus);
             var compare = Action("Compare", () => { });
             compare.Background=Brushes.Transparent;
