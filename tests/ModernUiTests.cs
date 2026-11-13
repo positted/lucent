@@ -486,9 +486,7 @@ class ModernUiTests
   Call(shell,"SetSettingsOpen",true);await Until(()=>shell.SettingsOpen);Call(shell,"SelectSettingsCategory","General");shell.UpdateLayout();
   var settingsWords=Visuals<SmoothText>((DependencyObject)Field(shell,"settingsContent")).Select(w=>w.Text).ToArray();
   Check(!settingsWords.Any(w=>w.Contains("Import saved resolutions"))&&!settingsWords.Contains("Minimize to tray")&&settingsWords.Contains("Close to tray"),"General settings still show the import row or the old tray option: "+string.Join("|",settingsWords.Take(12)));
-  // ---- The settings window opens like an iOS sheet: it springs up past its place by a hair, and rests exactly in it.
-  Check(Shell.SpringOut(0)==0&&Math.Abs(Shell.SpringOut(1)-1)<1e-9,"The spring must start at 0 and finish at 1");
-  double peak=0;for(double v=0;v<=1.0001;v+=.01)peak=Math.Max(peak,Shell.SpringOut(v));Check(peak>1.05&&peak<1.2,"The spring should overshoot a little: "+peak);
+  // ---- The settings window opens calmly: it grows a little (from 92%) with no overshoot, and rests exactly in place.
   var card=(UIElement)Field(shell,"settingsCard");await Until(()=>card.Opacity>.9999&&card.RenderTransform.Value.IsIdentity);Check(card.Opacity>.9999&&card.RenderTransform.Value.IsIdentity,"The open settings window must rest exactly in place: "+card.Opacity+" "+card.RenderTransform.Value);
   Call(shell,"SetSettingsOpen",false);double smallest=1;for(int i=0;i<40&&card.Opacity>.02;i++){smallest=Math.Min(smallest,card.RenderTransform.Value.M11);await Task.Delay(10);}
   await Until(()=>((Grid)Field(shell,"settingsLayer")).Visibility==Visibility.Hidden);Check(smallest<.995,"The settings window did not shrink away while closing: "+smallest);
@@ -935,7 +933,7 @@ await Until(()=>((UIElement)Field(shell,"settingsLayer")).Visibility!=Visibility
  {
   // Settings opens as a grid of category cards; a category opens on its own page with a button back to the grid.
   var content=(ContentControl)Field(shell,"settingsContent");var buttons=(IDictionary)Field(shell,"settingsCategoryButtons");var cards=(IDictionary)Field(shell,"settingsCards");
-  Call(shell,"SetSettingsOpen",true);await Task.Delay(420);shell.UpdateLayout();
+  Call(shell,"SetSettingsOpen",true);await Task.Delay(420);shell.UpdateLayout();await Until(()=>{shell.UpdateLayout();return cards.Values.Cast<FrameworkElement>().All(c=>c.IsVisible&&c.ActualWidth>140);},2500);
   Check((bool)Field(shell,"settingsOverviewShown")&&ReferenceEquals(content.Content,Field(shell,"settingsOverview")),"Settings should open on the grid of categories");
   Check(cards.Count==8&&cards.Count==buttons.Count&&cards.Values.Cast<FrameworkElement>().All(c=>c.IsVisible&&c.ActualWidth>140),"The grid is missing a category card");
   Check(!((FrameworkElement)Field(shell,"settingsBack")).IsVisible,"The back button should not show on the grid");

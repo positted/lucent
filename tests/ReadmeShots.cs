@@ -83,7 +83,7 @@ class ReadmeShots
   // A plain dark window across the display, behind everything we show.
   var stage=new Window{WindowStyle=WindowStyle.None,ResizeMode=ResizeMode.NoResize,ShowInTaskbar=false,Background=new System.Windows.Media.SolidColorBrush(Environment.GetEnvironmentVariable("LUCENT_STAGE")=="white"?System.Windows.Media.Color.FromRgb(240,240,240):System.Windows.Media.Color.FromRgb(0,0,0)),WindowStartupLocation=WindowStartupLocation.Manual,Left=screen.Bounds.Left/scale,Top=screen.Bounds.Top/scale,Width=screen.Bounds.Width/scale,Height=screen.Bounds.Height/scale};
   stage.Show();
-  Lucent.Design.VersionOverride="1.1126";   // the pictures show the release name, not a build number (set before the window builds About)
+  Lucent.Design.VersionOverride="1.1126.1";   // the pictures show the release name, not a build number (set before the window builds About)
   var shell=new Shell(true){WindowStartupLocation=WindowStartupLocation.Manual,Left=screen.Bounds.Left/scale+90,Top=screen.Bounds.Top/scale+60,Width=1180,Height=780};
   shell.Show();shell.Activate();
   var prefs=(Preferences)F(shell,"preferences").GetValue(shell);

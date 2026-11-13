@@ -55,8 +55,8 @@ namespace Lucent
                 var group=(TransformGroup)settingsCard.RenderTransform;
                 var scale=(ScaleTransform)group.Children[0];var lift=(TranslateTransform)group.Children[1];
                 // The window grows out of the settings gear and shrinks back into it (its origin is aimed at the gear before each motion).
-                double eased=settingsOpen?SpringOut(p):p;
-                scale.ScaleX=scale.ScaleY=Math.Max(.05,.05+.95*eased);
+                // A small, calm growth (from 92%) with no overshoot: growing from almost nothing with a spring past full size looked violent.
+                scale.ScaleX=scale.ScaleY=.92+.08*p;
                 lift.Y=0;
             }
         }
@@ -92,9 +92,51 @@ namespace Lucent
             items.Children.Add(new Border {Width=1,Height=16,Background=new SolidColorBrush(Color.FromArgb(60,255,255,255)),Margin=new Thickness(5,0,5,0),IsHitTestVisible=false});
             settingsRailButton=ModernNavButton("Settings");
             items.Children.Add(settingsRailButton);
-            tabStrip=new Border {Background=new SolidColorBrush(Color.FromArgb(178,16,16,18)),CornerRadius=new CornerRadius(12),Padding=new Thickness(3,3,4,3),Height=34,VerticalAlignment=VerticalAlignment.Top,HorizontalAlignment=HorizontalAlignment.Left,Child=items};
+            // The lit tab is one pill behind the tabs that slides to the tab you pick (like Apple's segmented controls), instead of each tab lighting up on its own.
+            tabItems=items;
+            // The pill is a drop of lighter glass: a soft fill, lit from above, with its own bright rim.
+            var drop=new LinearGradientBrush(new GradientStopCollection{new GradientStop(Color.FromArgb(62,255,255,255),0),new GradientStop(Color.FromArgb(30,255,255,255),1)},new Point(0,0),new Point(0,1));drop.Freeze();
+            var dropRim=new LinearGradientBrush(new GradientStopCollection{new GradientStop(Color.FromArgb(96,255,255,255),0),new GradientStop(Color.FromArgb(18,255,255,255),.6),new GradientStop(Color.FromArgb(40,255,255,255),1)},new Point(0,0),new Point(0,1));dropRim.Freeze();
+            var pillGroup=new TransformGroup();pillGroup.Children.Add(tabPillStretch);pillGroup.Children.Add(tabPillMove);
+            tabPill=new Border {CornerRadius=new CornerRadius(9),Background=drop,BorderBrush=dropRim,BorderThickness=new Thickness(1),
+                HorizontalAlignment=HorizontalAlignment.Left,IsHitTestVisible=false,Width=0,Opacity=0,RenderTransform=pillGroup,RenderTransformOrigin=new Point(.5,.5)};
+            var layers=new Grid();layers.Children.Add(tabPill);layers.Children.Add(items);
+            items.SizeChanged+=(s,e)=>MoveTabPill(false);
+            tabGlass=new LiquidGlass(12) {Content=new Border {Padding=new Thickness(3,3,4,3),Child=layers}};
+            tabStrip=new Border {Height=34,VerticalAlignment=VerticalAlignment.Top,HorizontalAlignment=HorizontalAlignment.Left,Child=tabGlass};
         }
-        Border tabStrip;
+        Border tabStrip,tabPill;StackPanel tabItems;LiquidGlass tabGlass,buttonsGlass;readonly TranslateTransform tabPillMove=new TranslateTransform();readonly ScaleTransform tabPillStretch=new ScaleTransform(1,1);
+        // Slides the pill under the tab of the page in view (or puts it there at once).
+        void MoveTabPill(bool animate)
+        {
+            if(tabPill==null||tabItems==null)return;
+            Button target=null;
+            foreach(var button in navigationButtons)if((string)button.Tag==page&&(string)button.Tag!="Settings")target=button;
+            if(target==null||target.ActualWidth<=0){Design.Animate(tabPill,OpacityProperty,tabPill.Opacity,0,140);return;}
+            double x=target.TranslatePoint(new Point(),tabItems).X,width=target.ActualWidth;
+            bool first=tabPill.Opacity<.01;
+            if(!animate||first||preferences.PerformanceMode)
+            {
+                tabPillMove.BeginAnimation(TranslateTransform.XProperty,null);tabPill.BeginAnimation(WidthProperty,null);
+                tabPillMove.X=x;tabPill.Width=width;
+                if(first)Design.Animate(tabPill,OpacityProperty,0,1,160);
+                return;
+            }
+            // A soft spring: quick off the mark, a hair past the tab, then settling on it. Like a drop of liquid it stretches along the way it moves and
+            // thins a little while it travels, the more the further it goes, and comes back to its shape as it lands.
+            var ease=new BackEase{EasingMode=EasingMode.EaseOut,Amplitude=.22};
+            var span=TimeSpan.FromMilliseconds(380);
+            double travel=Math.Min(1,Math.Abs(x-tabPillMove.X)/240);
+            tabPillMove.BeginAnimation(TranslateTransform.XProperty,new DoubleAnimation(tabPillMove.X,x,span){EasingFunction=ease});
+            tabPill.BeginAnimation(WidthProperty,new DoubleAnimation(tabPill.ActualWidth>0?tabPill.ActualWidth:width,width,span){EasingFunction=ease});
+            var stretch=new DoubleAnimationUsingKeyFrames();
+            stretch.KeyFrames.Add(new SplineDoubleKeyFrame(1+.28*travel,KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)),new KeySpline(.3,0,.4,1)));
+            stretch.KeyFrames.Add(new SplineDoubleKeyFrame(1,KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(400)),new KeySpline(.2,.8,.3,1)));
+            var thin=new DoubleAnimationUsingKeyFrames();
+            thin.KeyFrames.Add(new SplineDoubleKeyFrame(1-.14*travel,KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)),new KeySpline(.3,0,.4,1)));
+            thin.KeyFrames.Add(new SplineDoubleKeyFrame(1,KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(400)),new KeySpline(.2,.8,.3,1)));
+            tabPillStretch.BeginAnimation(ScaleTransform.ScaleXProperty,stretch);tabPillStretch.BeginAnimation(ScaleTransform.ScaleYProperty,thin);
+        }
         readonly List<TextBlock> tabLabels=new List<TextBlock>();
         // A tab: the page's icon and name (the settings gear is just the icon). The page in view is lit.
         Button ModernNavButton(string title)
@@ -115,8 +157,7 @@ namespace Lucent
             var button=new Button {Content=content,Tag=title,Style=(Style)Resources["TabAction"],Margin=new Thickness(1,0,1,0),ToolTip=null};
             if(gear){button.Padding=new Thickness(8,0,8,0);button.ToolTip=RailTooltip(TabTitle(title),button,false,null,0,false);}
             System.Windows.Automation.AutomationProperties.SetName(button,TabTitle(title));
-            button.MouseEnter+=(s,e)=>Design.Animate(content,OpacityProperty,content.Opacity,1,90);
-            button.MouseLeave+=(s,e)=>Design.Animate(content,OpacityProperty,content.Opacity,(string)button.Tag==page||title=="Settings"&&settingsOpen?1:.62,180);
+            // No hover light on the tabs: only the sliding pill shows which page is open.
             button.Click+=(s,e)=>{if(title=="Music")MediaPopup();else ShowPage(title);};
             navigationButtons.Add(button);return button;
         }
@@ -157,9 +198,10 @@ namespace Lucent
             foreach(var button in navigationButtons)
             {
                 bool active=(string)button.Tag==page||((string)button.Tag=="Settings"&&settingsOpen);
-                button.Background=active&&(string)button.Tag!="Settings"?new SolidColorBrush(Color.FromArgb(40,255,255,255)):(Brush)Brushes.Transparent;
+                button.Background=Brushes.Transparent;
                 var icon=button.Content as UIElement;if(icon!=null){icon.BeginAnimation(OpacityProperty,null);icon.Opacity=active?1:.62;}
             }
+            MoveTabPill(IsLoaded);
         }
         void BuildModernBody()
         {
@@ -171,7 +213,10 @@ namespace Lucent
             DockPanel.SetDock(tabStrip,Dock.Left);top.Children.Add(tabStrip);
             top.SizeChanged+=(s,e)=>FitTabs(Math.Max(120,e.NewSize.Width-150));
             var group=new StackPanel {Orientation=Orientation.Horizontal};
-            var chrome=new Border {Background=new SolidColorBrush(Color.FromArgb(178,16,16,18)),CornerRadius=new CornerRadius(11),Padding=new Thickness(4,2,4,2),Child=group,Height=34,VerticalAlignment=VerticalAlignment.Top};
+            buttonsGlass=new LiquidGlass(11);
+            var chrome=new Border {Padding=new Thickness(4,2,4,2),Child=group,Height=34,VerticalAlignment=VerticalAlignment.Top};
+            // The window buttons sit on the same glass as the tabs.
+            chrome.Child=null;buttonsGlass.Content=new Border {Padding=chrome.Padding,Child=group};chrome.Padding=new Thickness(0);chrome.Child=buttonsGlass;
             DockPanel.SetDock(chrome,Dock.Right);top.Children.Add(chrome);
             windowButtons=chrome;chrome.Loaded+=(s,e)=>UpdatePageClip();chrome.SizeChanged+=(s,e)=>UpdatePageClip();
             AddWindowButtons(group);
@@ -251,6 +296,7 @@ namespace Lucent
             playerBar.Backdrop.On=!preferences.PerformanceMode;
             playerBar.SetGlass(GlassOn);
             playerBar.SetBlurSources(ambientBackdrop,flowHost,pageHost);
+            foreach(var glass in new[]{tabGlass,buttonsGlass})if(glass!=null){glass.SetSources(ambientBackdrop,flowHost);glass.BlurOn=GlassOn;}
             pageHost.SizeChanged+=(s,e)=>{UpdatePageClip();playerBar.FitBlur();};
             playerBar.LayoutUpdated+=(s,e)=>playerBar.FitBlur();
             pageArea=new Grid();
@@ -604,7 +650,7 @@ namespace Lucent
             Design.Instant=preferences.PerformanceMode;
             if(playerBar==null)return;
             playerBar.Backdrop.On=!preferences.PerformanceMode;
-            playerBar.SetGlass(GlassOn);
+            playerBar.SetGlass(GlassOn);foreach(var glass in new[]{tabGlass,buttonsGlass})if(glass!=null)glass.BlurOn=GlassOn;
             UpdatePageClip();
             UpdateAmbientColor();
         }
@@ -1036,10 +1082,10 @@ namespace Lucent
                 if(++frames<2)return;CompositionTarget.Rendering-=begin;
                 double from=(double)GetValue(SettingsMotionProperty),to=open?1:0;
                 // A partial reversal takes proportionally less time at the same pace.
-                var length=TimeSpan.FromMilliseconds(Math.Max(80,(open?400:230)*Math.Abs(to-from)));
+                var length=TimeSpan.FromMilliseconds(Math.Max(80,(open?320:230)*Math.Abs(to-from)));
                 var motion=new DoubleAnimationUsingKeyFrames();
                 motion.KeyFrames.Add(new LinearDoubleKeyFrame(from,KeyTime.FromTimeSpan(TimeSpan.Zero)));
-                motion.KeyFrames.Add(new SplineDoubleKeyFrame(to,KeyTime.FromTimeSpan(length),open?new KeySpline(.2,.2,.2,1):new KeySpline(.25,.2,.25,1)));
+                motion.KeyFrames.Add(new SplineDoubleKeyFrame(to,KeyTime.FromTimeSpan(length),open?new KeySpline(.25,.8,.3,1):new KeySpline(.25,.2,.25,1)));
                 motion.Completed+=(c,d)=>
                 {
                     if(transition!=settingsTransition)return;

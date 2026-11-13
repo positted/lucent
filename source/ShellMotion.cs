@@ -102,7 +102,8 @@ namespace Lucent
         static void HideSlot(ScrollViewer slot)
         {
             slot.BeginAnimation(OpacityProperty,null);
-            ((TranslateTransform)slot.RenderTransform).BeginAnimation(TranslateTransform.YProperty,null);
+            var hiddenMove=(TranslateTransform)slot.RenderTransform;
+            hiddenMove.BeginAnimation(TranslateTransform.YProperty,null);hiddenMove.BeginAnimation(TranslateTransform.XProperty,null);hiddenMove.X=0;
             slot.Opacity=0;
             if(slot.Visibility!=Visibility.Collapsed)slot.Visibility=Visibility.Hidden;
             slot.IsHitTestVisible=false;
@@ -217,22 +218,26 @@ namespace Lucent
             content=pageHolders[key];
             foreach(var slot in pageSlots.Values)if(!ReferenceEquals(slot,next)&&!ReferenceEquals(slot,old))HideSlot(slot);
             var rise=(TranslateTransform)next.RenderTransform;
+            // Like tabs on Apple's systems, the page slides in from the side of the tab you moved to (from the right going right, from the left going left),
+            // and the page you left slides a little the other way as it fades.
+            string oldKey=null;foreach(var pair in pageSlots)if(ReferenceEquals(pair.Value,old))oldKey=pair.Key;
+            int direction=Math.Sign(PageOrder(key)-PageOrder(oldKey));if(direction==0)direction=1;
             // A tab left a moment ago may still be fading out; fading it back in continues from where it is.
-            double start=fresh?0:Math.Max(0,Math.Min(1,next.Opacity)),lift=fresh||start<.02?10:Math.Min(10,rise.Y);
+            double start=fresh?0:Math.Max(0,Math.Min(1,next.Opacity)),lift=fresh||start<.02?36*direction:rise.X;
             next.BeginAnimation(OpacityProperty,null);
-            rise.BeginAnimation(TranslateTransform.YProperty,null);
+            rise.BeginAnimation(TranslateTransform.YProperty,null);rise.BeginAnimation(TranslateTransform.XProperty,null);rise.Y=0;
             next.Visibility=Visibility.Visible;
             next.IsHitTestVisible=true;
             if(old!=null)old.IsHitTestVisible=false;
             if(!animate||old==null||preferences.PerformanceMode)
             {
                 next.Opacity=1;
-                rise.Y=0;
+                rise.Y=0;rise.X=0;
                 if(old!=null)HideSlot(old);
                 return;
             }
             next.Opacity=start;
-            rise.Y=lift;
+            rise.X=lift;
             Action go=()=>
             {
                 if(motion!=pageMotion)return;
@@ -240,8 +245,11 @@ namespace Lucent
                 fadeIn.KeyFrames.Add(new SplineDoubleKeyFrame(1,KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(220)),new KeySpline(.2,.2,.2,1)));
                 fadeIn.Completed+=(s,e)=>{if(motion==pageMotion)SettlePage();};
                 next.BeginAnimation(OpacityProperty,fadeIn);
-                rise.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(lift,0,TimeSpan.FromMilliseconds(260)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}});
-                var fadeOut=new DoubleAnimation(old.Opacity,0,TimeSpan.FromMilliseconds(140)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}};
+                var slideIn=new DoubleAnimationUsingKeyFrames();
+                slideIn.KeyFrames.Add(new SplineDoubleKeyFrame(0,KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(320)),new KeySpline(.25,.8,.3,1)));
+                rise.BeginAnimation(TranslateTransform.XProperty,slideIn);
+                ((TranslateTransform)old.RenderTransform).BeginAnimation(TranslateTransform.XProperty,new DoubleAnimation(0,-20*direction,TimeSpan.FromMilliseconds(180)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseIn}});
+                var fadeOut=new DoubleAnimation(old.Opacity,0,TimeSpan.FromMilliseconds(160)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}};
                 var leaving=old;
                 fadeOut.Completed+=(s,e)=>{if(!ReferenceEquals(contentScroll,leaving))HideSlot(leaving);};
                 old.BeginAnimation(OpacityProperty,fadeOut);
@@ -256,6 +264,12 @@ namespace Lucent
             guard.Tick+=(s,e)=>{guard.Stop();CompositionTarget.Rendering-=begin;go();};
             guard.Start();
         }
+        // Where a page sits along the tabs (left to right), for the direction a page slides in from.
+        static int PageOrder(string key)
+        {
+            int index=Array.IndexOf(new[]{"Home","Video","Resolution","Crosshair","Profiles","Visual tools","Game Boost","Settings"},key);
+            return index<0?0:index;
+        }
         // Ends any page motion at once, with the current page fully shown and the others hidden.
         internal void SettlePage()
         {
@@ -266,8 +280,9 @@ namespace Lucent
                 {
                     slot.BeginAnimation(OpacityProperty,null);
                     ((TranslateTransform)slot.RenderTransform).BeginAnimation(TranslateTransform.YProperty,null);
+                    ((TranslateTransform)slot.RenderTransform).BeginAnimation(TranslateTransform.XProperty,null);
                     slot.Opacity=1;
-                    ((TranslateTransform)slot.RenderTransform).Y=0;
+                    ((TranslateTransform)slot.RenderTransform).Y=0;((TranslateTransform)slot.RenderTransform).X=0;
                     slot.Visibility=Visibility.Visible;
                     slot.IsHitTestVisible=true;
                 }

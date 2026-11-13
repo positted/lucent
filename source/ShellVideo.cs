@@ -160,7 +160,8 @@ namespace Lucent
         }
         void StyleMonitorCard(Button card, bool active)
         {
-            card.Background=active?selectedDisplaySurface:displaySurface;
+            // An unselected display has no card of its own (a faint card read as a border); hovering it still lights it, and the selected one keeps its surface.
+            card.Background=active?(Brush)selectedDisplaySurface:Brushes.Transparent;
             card.BorderBrush=active?Brushes.White:new SolidColorBrush(Color.FromArgb(20,255,255,255));
             card.BorderThickness=new Thickness(0);
             card.Effect=null;
