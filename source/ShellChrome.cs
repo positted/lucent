@@ -367,7 +367,7 @@ namespace Lucent
         internal void SetMediaAvailable(bool available)
         {
             if(available)lastMediaSeen=DateTime.UtcNow;
-            bool show=available||mediaPlayer!=null||bigPlayerOpen||bigPlayerWindow!=null||DateTime.UtcNow-lastMediaSeen<TimeSpan.FromSeconds(2);
+            bool show=preferences.MediaControls&&(available||mediaPlayer!=null||bigPlayerOpen||bigPlayerWindow!=null||DateTime.UtcNow-lastMediaSeen<TimeSpan.FromSeconds(2));
             if(show==playerDockShown)return;
             playerDockShown=show;
             ApplyPlayerBar();
@@ -527,7 +527,7 @@ namespace Lucent
         {
             // With the window hidden or minimized the app does not draw anything for the music, but a player window of its own (mini, popped out) still needs to know when the music is gone.
             bool hidden=!IsVisible||WindowState==WindowState.Minimized;
-            if(readingPalette||closing||(hidden&&mediaPlayer==null&&bigPlayerWindow==null))return;
+            if(readingPalette||closing||!preferences.MediaControls||(hidden&&mediaPlayer==null&&bigPlayerWindow==null))return;
             readingPalette=true;
             try
             {
@@ -556,7 +556,7 @@ namespace Lucent
         bool snapColors;
         async Task RefreshColorsBeforeShowing()
         {
-            if(readingPalette||closing)return;
+            if(readingPalette||closing||!preferences.MediaControls)return;
             readingPalette=true;
             try
             {
@@ -624,24 +624,43 @@ namespace Lucent
         bool UpdateFlowBackdrop()
         {
             bool started=false;
-            bool want=preferences.AnimatedBackground&&!preferences.PerformanceMode&&Adaptive&&paletteBitmap!=null&&!(customBackgroundLoaded&&preferences.Artwork);
+            bool allowed=preferences.AnimatedBackground&&!preferences.PerformanceMode&&!(customBackgroundLoaded&&preferences.Artwork);
+            bool music=allowed&&Adaptive&&paletteBitmap!=null;
+            // With nothing playing (or the music's colors off) the idle colors drift instead: deep blue, indigo and teal.
+            // (Not in the tests' window, which never pauses the colors the way the app does while settings move.)
+            bool idle=allowed&&!music&&!TestMode;
+            bool want=music||idle;
             flowHost.Visibility=want?Visibility.Visible:Visibility.Collapsed;
             if(want)
             {
-                var field=paletteBitmap;
+                var field=music?paletteBitmap:FlowingBackdrop.IdleCover();
                 if(!ReferenceEquals(flowCover,field)){flowCover=field;started=flowBackdrop.SetCover(field);}
                 // The moving colors are a fixed amount, not tied to the color amount, which would have left them nearly invisible.
                 flowHost.Opacity=1;
             }
             // The colors keep drifting while the song is paused (they only rest when nothing is loaded): freezing the moment you paused looked broken.
-            flowBackdrop.SetActive(want&&ambientTrack!=null);
+            flowBackdrop.SetActive(want&&(ambientTrack!=null||idle));
             return started;
         }
         // The window's colors, the moving colors, the bar's band and the tint of the sections and the bar all follow the cover, and they change together
         // (the sections used to change first, because the others take a moment to work out).
         readonly ColorSync colorSync=new ColorSync();
         // The colors of what is playing show in the interface unless adaptive colors are off, or performance mode (which turns off what is only for show).
-        bool Adaptive {get{return preferences.AdaptiveTheme&&!preferences.PerformanceMode;}}
+        bool Adaptive {get{return preferences.AdaptiveTheme&&preferences.MediaControls&&!preferences.PerformanceMode;}}
+        // Media controls switched off or on: off closes every player, hides the player buttons and the bar, and drops the music's colors; on, the next read brings them back.
+        void ApplyMediaControls()
+        {
+            if(!preferences.MediaControls)
+            {
+                CloseOtherPlayers("none");
+                SetMediaAvailable(false);
+                ambientTrack=null;
+                PrepareTrackColors(null);
+                UpdateFlowBackdrop();
+                UpdateHome();
+            }
+            UpdateAmbientColor();
+        }
         // The bar is glass when the setting is on and performance mode is not.
         bool GlassOn {get{return preferences.Glass&&!preferences.PerformanceMode;}}
         // Performance mode and the glass setting, applied to the bar, the page behind it and the colors.

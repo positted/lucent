@@ -92,6 +92,8 @@ namespace Lucent
         // Discord Rich Presence is on by default. Settings saved before this was decided are turned on once (version 1); after that the switch in Settings is respected.
         public int DiscordSettingVersion;
         public bool AdaptiveTheme=true;
+        // Off: Lucent does not read what is playing at all: no player bar, mini player or player, and no colors from the music.
+        public bool MediaControls=true;
         // How strongly the artwork colors the app is one fixed amount (there is no setting for it): the colors stay calm, a little like the dark, warm look of a music app.
         public const double FixedIntensity=.3;
         public double ThemeIntensity=FixedIntensity;

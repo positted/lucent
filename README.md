@@ -31,12 +31,12 @@ Free and open source (MIT) · Windows 10 / 11 · **[Download Lucent-Setup.exe](h
 
 <table>
 <tr>
-<td align="center"><img src="docs/images/player.png" alt="The player, with the artist's picture and lyrics" width="430"><br><sub>Player</sub></td>
-<td align="center"><img src="docs/images/games.png" alt="Profiles, with your games found from your launchers" width="430"><br><sub>Profiles</sub></td>
+<td align="center"><img src="docs/images/player.png" alt="The player, with the artist's picture and lyrics" width="430"></td>
+<td align="center"><img src="docs/images/games.png" alt="Profiles, with your games found from your launchers" width="430"></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/images/color.png" alt="Color, with vibrance at 300%" width="430"><br><sub>Color</sub></td>
-<td align="center"><img src="docs/images/boost.png" alt="Boost" width="430"><br><sub>Boost</sub></td>
+<td align="center"><img src="docs/images/color.png" alt="Color, with vibrance at 300%" width="430"></td>
+<td align="center"><img src="docs/images/boost.png" alt="Boost" width="430"></td>
 </tr>
 </table>
 

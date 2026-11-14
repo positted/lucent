@@ -53,6 +53,12 @@ namespace Lucent
         FrameworkElement PolishedSettingsPage()
         {
             var appearance=SettingsSection("Appearance");var theme=new StackPanel();
+            theme.Children.Add(SettingsSwitch("Media controls","The player bar, the mini player and the player for what is playing on your PC, and the colors of the music in the app. Off, Lucent does not read what is playing at all.",preferences.MediaControls,v=>
+            {
+                preferences.MediaControls=v;
+                ApplyMediaControls();
+                SaveSoon();
+            }));
             theme.Children.Add(SettingsSwitch("Adaptive colors","Blend colors from the current artwork into the interface.",preferences.AdaptiveTheme,v=>
             {
                 preferences.AdaptiveTheme=v;

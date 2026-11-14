@@ -30,6 +30,19 @@ namespace Lucent
             var stack=Page(TabTitle("Visual tools"),"Tools that help you see more in a game. Each one is separate and off until you switch it on.");
             var warning=Section("Game rules may prohibit these tools","Dark-scene enhancement, zoom, color highlights and the sound radar can create an advantage. No anti-cheat or ban-safety guarantee is made. Keep these off where prohibited.");
             stack.Children.Add(warning);
+            // A warning sign before the notice's title.
+            var notice=warning.Content.Children[0] as FrameworkElement;
+            if(notice!=null)
+            {
+                warning.Content.Children.RemoveAt(0);
+                // The title's own spacing moves to the row, so the sign is centered on the words themselves (and lifted a touch to their capital letters).
+                var heading=new StackPanel {Orientation=Orientation.Horizontal,Margin=notice.Margin};
+                notice.Margin=new Thickness(0);
+                var sign=Design.Icon("Warning",20);sign.Margin=new Thickness(0,0,9,0);sign.VerticalAlignment=VerticalAlignment.Center;sign.RenderTransform=new TranslateTransform(0,-1.5);
+                notice.VerticalAlignment=VerticalAlignment.Center;
+                heading.Children.Add(sign);heading.Children.Add(notice);
+                warning.Content.Children.Insert(0,heading);
+            }
             warning.Children.Add(Toggle("I have reviewed the rules for my game",preferences.RiskAccepted,v=>
             {
                 preferences.RiskAccepted=v;

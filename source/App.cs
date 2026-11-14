@@ -340,6 +340,7 @@ namespace Lucent
         // The big player can live in the app or in a window of its own, never both.
         void PopOutBigPlayer()
         {
+            if(!preferences.MediaControls)return;
             CloseOtherPlayers("window");
             bigPlayerWindow=new BigPlayerWindow(this,TestMode,DockBigPlayer);
             bigPlayerWindow.Closed+=(sender,args)=>{bigPlayerWindow=null;ShowPlayerOpen(bigPlayerButton,bigPlayerOpen);ApplyPlayerBar();};
@@ -358,6 +359,7 @@ namespace Lucent
         void MediaPopup()
         {
             if(mediaPlayer!=null){mediaPlayer.Close();return;}
+            if(!preferences.MediaControls)return;
             CloseOtherPlayers("mini");
             mediaPlayer=new MediaPlayerWindow(this,preferences,TestMode){Changed=SaveSoon,ShowAppSettings=()=>{Open(page);SetSettingsOpen(true);SelectSettingsCategory("Mini Player");}};
             mediaPlayer.Closed+=(sender,args)=>{mediaPlayer=null;ShowPlayerOpen(playerDockButton,false);ApplyPlayerBar();};
@@ -370,6 +372,7 @@ namespace Lucent
         void SetBigPlayerOpen(bool open)
         {
             if(open==bigPlayerOpen)return;
+            if(open&&!preferences.MediaControls)return;
             if(open)CloseOtherPlayers("big");
             bigPlayerOpen=open;
             ShowPlayerOpen(bigPlayerButton,open||bigPlayerWindow!=null);

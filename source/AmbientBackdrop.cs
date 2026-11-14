@@ -192,7 +192,12 @@ namespace Lucent
                         tr=baseR+(tr-baseR)*reach;tg=baseG+(tg-baseG)*reach;tb=baseB+(tb-baseB)*reach;floor=0;
                     }
                     else if(image)Soften(r*wash*amount,g*wash*amount,b*wash*amount,out tr,out tg,out tb);
-                    else tr=tg=tb=18*spot;
+                    else
+                    {
+                        // Nothing playing: not flat black, but a quiet deep-blue light at the top right and a faint teal glow low on the left.
+                        double low=Math.Exp(-2*((nx-.1)*(nx-.1)/.24+(ny-1)*(ny-1)/.3));
+                        tr=14*spot+3*low;tg=16*spot+16*low;tb=44*spot+20*low;floor=8;
+                    }
                     // Well-mixed triangular dither: a weak hash leaves visible streaks.
                     uint hash=unchecked((uint)x*73856093u^(uint)y*19349663u);
                     hash=unchecked((hash^(hash>>15))*2246822519u);

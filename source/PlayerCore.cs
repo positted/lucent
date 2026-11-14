@@ -141,7 +141,7 @@ namespace Lucent
             Frame(button,width);
             var face=new Grid {Opacity=IdleInk};
             foreach(string symbol in symbols){var icon=Design.Icon(symbol,iconSize);icon.Visibility=face.Children.Count==0?Visibility.Visible:Visibility.Collapsed;face.Children.Add(icon);}
-            face.Children.Add(new System.Windows.Shapes.Ellipse {Width=4,Height=4,Fill=Brushes.White,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,0,0),Opacity=0});
+            face.Children.Add(new System.Windows.Shapes.Ellipse {Width=4,Height=4,Fill=Brushes.White,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,0,0),Opacity=0,RenderTransform=new TranslateTransform(0,6)});   // below the icon, not on it
             button.Content=face;
             Motion(button,1.14,.86);
             System.Windows.Automation.AutomationProperties.SetName(button,name);

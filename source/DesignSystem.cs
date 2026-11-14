@@ -655,7 +655,7 @@ namespace Lucent
                 default:data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,11 L12,16.5 M12,7.6 L12,7.7";break;
             }
             // The speaker with one wave is drawn left of the middle of its box (its shape ends at about 18 of 24); moved over, it sits in the middle of its button.
-            var path=new System.Windows.Shapes.Path {RenderTransform=name=="VolumeLow"?new TranslateTransform(2.3,0):Transform.Identity,Data=Geometry.Parse(data),Width=24,Height=24,Stretch=name=="Pause"||name=="Play"||name=="Volume"||name=="VolumeLow"||name=="Mute"?Stretch.None:Stretch.Uniform,Stroke=solid&&!rounded?null:Brushes.White,Fill=solid?Brushes.White:null,StrokeThickness=1.65,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round,StrokeLineJoin=PenLineJoin.Round};
+            var path=new System.Windows.Shapes.Path {RenderTransform=Transform.Identity,Data=Geometry.Parse(data),Width=24,Height=24,Stretch=name=="Pause"||name=="Play"||name=="Volume"||name=="VolumeLow"||name=="Mute"?Stretch.None:Stretch.Uniform,Stroke=solid&&!rounded?null:Brushes.White,Fill=solid?Brushes.White:null,StrokeThickness=1.65,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round,StrokeLineJoin=PenLineJoin.Round};
             return new Viewbox{Width=size,Height=size,Child=path};
         }
         public static ResourceDictionary Resources(string fallback)

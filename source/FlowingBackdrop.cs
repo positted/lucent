@@ -160,6 +160,24 @@ namespace Lucent
         // The one background of every player: the same look, the same motion. (The mini player only changes how fast it moves, by its own setting.)
         internal static FlowingBackdrop ForPlayers(){return new FlowingBackdrop {Player=true,LightCap=185,Shade=.45,Lively=true,Speed=2.6,Travel=1.5,Rate=60};}
         internal static BitmapSource[] SmoothSet(BitmapSource cover){return SmoothSet(cover,0,140);}
+        // What drifts behind the app while nothing is playing (or the music's colors are off): a made-up "cover" of soft deep blue, indigo and teal on near-black,
+        // so the window moves gently instead of sitting flat and black.
+        static BitmapSource idleCover;
+        internal static BitmapSource IdleCover()
+        {
+            if(idleCover!=null)return idleCover;
+            const int S=96;var px=new byte[S*S*4];
+            // x, y, size, then red, green, blue of each glow
+            double[][] glows={new[]{.72,.26,.34,24,38,118},new[]{.22,.72,.34,8,66,86},new[]{.38,.18,.26,50,28,104},new[]{.82,.82,.30,16,28,72}};
+            for(int y=0;y<S;y++)for(int x=0;x<S;x++)
+            {
+                double r=6,g=7,b=10,nx=x/(double)(S-1),ny=y/(double)(S-1);
+                foreach(var o in glows){double d=((nx-o[0])*(nx-o[0])+(ny-o[1])*(ny-o[1]))/(o[2]*o[2]),k=Math.Exp(-d*1.6);r+=o[3]*k;g+=o[4]*k;b+=o[5]*k;}
+                int i=(y*S+x)*4;px[i]=(byte)Math.Min(255,b);px[i+1]=(byte)Math.Min(255,g);px[i+2]=(byte)Math.Min(255,r);px[i+3]=255;
+            }
+            var bmp=BitmapSource.Create(S,S,96,96,PixelFormats.Bgra32,null,px,S*4);bmp.Freeze();
+            return idleCover=bmp;
+        }
         // Mode 0 is the plain background, 1 the rich one (the app), 2 the one of the players.
         internal static BitmapSource[] SmoothSet(BitmapSource cover,int mode,double lightCap,double chroma=0)
         {
